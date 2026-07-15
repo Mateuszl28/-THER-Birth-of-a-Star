@@ -4,6 +4,8 @@
 
 ![ÆTHER — Birth of a Star](shot_hero.png)
 
+![A newborn ringed world in the finale fly-through](shot_finale.png)
+
 An interactive 3D website built for the **3D Websites Hackathon**. Scroll and you travel
 through the life of a star: a spiral galaxy of ~46,000 particles collapses into a glowing
 core, erupts into a supernova, and finally settles into a living planetary system you can
