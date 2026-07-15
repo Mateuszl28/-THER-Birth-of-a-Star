@@ -585,6 +585,26 @@ function atmoMaterial(color) {
       void main(){ float f = pow(1.0 - max(dot(vN, vE), 0.0), 2.6); gl_FragColor = vec4(uColor, 1.0) * f; }`,
   });
 }
+// planet atmosphere with sun-aware scattering (cool limb, warm terminator glow)
+function planetAtmoMaterial(color) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+    vertexShader: `varying vec3 vN; varying vec3 vWPos;
+      void main(){ vN = normalize(mat3(modelMatrix) * normal); vec4 wp = modelMatrix * vec4(position,1.0); vWPos = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `uniform vec3 uColor; varying vec3 vN; varying vec3 vWPos;
+      void main(){
+        vec3 V = normalize(cameraPosition - vWPos);
+        vec3 L = normalize(-vWPos);                       // sun sits at the origin
+        float f = pow(1.0 - max(dot(vN, V), 0.0), 2.6);   // fresnel rim
+        float sf = max(dot(vN, L), 0.0);
+        float term = smoothstep(0.0, 0.5, sf) * (1.0 - smoothstep(0.5, 1.0, sf)); // terminator band
+        vec3 c = mix(uColor, vec3(1.0, 0.55, 0.3), term * 0.85);
+        float lit = smoothstep(-0.2, 0.3, dot(vN, L));
+        gl_FragColor = vec4(c, 1.0) * f * (0.28 + lit);
+      }`,
+  });
+}
 
 const sunMat = new THREE.ShaderMaterial({
   uniforms: { uTime: { value: 0 } },
@@ -644,8 +664,8 @@ const planets = PLANETS.map((cfg, idx) => {
   group.add(mesh);
   // fresnel atmosphere (also part of the click target)
   const atmo = new THREE.Mesh(
-    new THREE.SphereGeometry(cfg.size * 1.32, 24, 18),
-    atmoMaterial(new THREE.Color(cfg.color).lerp(new THREE.Color(0xffffff), 0.45))
+    new THREE.SphereGeometry(cfg.size * 1.34, 32, 22),
+    planetAtmoMaterial(new THREE.Color(cfg.color).lerp(new THREE.Color(0x9ec8ff), 0.6))
   );
   atmo.userData.planetIndex = idx;
   group.add(atmo);
@@ -942,6 +962,36 @@ const GodRayShader = {
 };
 const godRayPass = new ShaderPass(GodRayShader);
 composer.addPass(godRayPass);
+
+// Gravitational lensing — light bends radially around the star's mass
+const LensShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uSun: { value: new THREE.Vector2(0.5, 0.5) },
+    uStrength: { value: 0.0 },
+    uAspect: { value: 1.0 },
+  },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform vec2 uSun;
+    uniform float uStrength;
+    uniform float uAspect;
+    varying vec2 vUv;
+    void main(){
+      vec2 d = vUv - uSun;
+      d.x *= uAspect;
+      float r = length(d);
+      float bend = uStrength / (r + 0.05);   // deflection grows near the mass
+      vec2 dir = d / max(r, 1e-4);
+      vec2 off = dir * bend;
+      off.x /= uAspect;
+      gl_FragColor = texture2D(tDiffuse, vUv - off);
+    }
+  `,
+};
+const lensPass = new ShaderPass(LensShader);
+composer.addPass(lensPass);
 
 const rgbPass = new ShaderPass(RGBShiftShader);
 composer.addPass(rgbPass);
@@ -1622,8 +1672,13 @@ function tick() {
 
   // god rays radiate from the star's screen position
   _sunProj.set(0, 0, 0).project(camera);
+  const sunOnScreen = _sunProj.z < 1 ? 1 : 0;
   godRayPass.uniforms.uSun.value.set(_sunProj.x * 0.5 + 0.5, _sunProj.y * 0.5 + 0.5);
-  godRayPass.uniforms.uIntensity.value = (_sunProj.z < 1 ? 1 : 0) * (ignite * 0.45 + sysVis * 0.26 + burst * 0.2);
+  godRayPass.uniforms.uIntensity.value = sunOnScreen * (ignite * 0.45 + sysVis * 0.26 + burst * 0.2);
+  // gravitational lensing around the star's mass
+  lensPass.uniforms.uSun.value.copy(godRayPass.uniforms.uSun.value);
+  lensPass.uniforms.uAspect.value = window.innerWidth / window.innerHeight;
+  lensPass.uniforms.uStrength.value = sunOnScreen * (ignite * 0.006 + sysVis * 0.004 + burst * 0.004);
 
   // anamorphic lens flare on the star
   const flareAmt = ignite * 0.85 + sysVis * 0.25 + burst * 0.3;
