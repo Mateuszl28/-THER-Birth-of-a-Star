@@ -1159,6 +1159,7 @@ if (IS_MOBILE) {
 // Click / tap anywhere (except HUD & buttons) triggers a shockwave
 window.addEventListener("pointerdown", (e) => {
   if (e.target.closest(".hud, button, a")) return;
+  if (piloting) { boostMouse = true; return; } // hold to boost in the game
   // in Act IV, a click on a planet opens its info card instead of rippling
   if (systemGroup.visible) {
     const pi = pickPlanet(e);
@@ -1441,6 +1442,7 @@ const navDots = chapters.map((c) => {
 });
 
 window.addEventListener("keydown", (e) => {
+  if (piloting) return; // in-game keys are handled by the pilot listener
   if (e.key === "h" || e.key === "H") {
     document.body.classList.toggle("photo"); // hide UI for clean screenshots
     return;
@@ -1546,6 +1548,9 @@ scene.add(clickRing);
 const PILOT_Z0 = 12;
 let piloting = false, pilotProgress = 0, shield = 100, stardust = 0;
 let shipX = 0, shipY = 0, pilotShake = 0;
+let boostMouse = false, boostKey = false, combo = 1, highScore = 0;
+const pilotKeys = {};
+try { highScore = parseInt(localStorage.getItem("aether_best") || "0", 10) || 0; } catch (e) {}
 const hazards = [];
 const hazardGroup = new THREE.Group();
 hazardGroup.visible = false;
@@ -1576,6 +1581,19 @@ function pilotFlash(kind) {
   damageFlash.className = "damage-flash " + kind;
   setTimeout(() => { damageFlash.className = "damage-flash"; }, 130);
 }
+// low percussive thud when the hull is hit
+function playThud() {
+  if (!audioCtx || audioCtx.state !== "running") return;
+  const now = audioCtx.currentTime, dur = 0.4;
+  const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const lp = audioCtx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 380;
+  const g = audioCtx.createGain(); g.gain.setValueAtTime(0.5, now); g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  src.connect(lp).connect(g).connect(audioCtx.destination);
+  src.start(now); src.stop(now + dur);
+}
 const pilotPanel = document.getElementById("pilotPanel");
 function showPilotPanel(html) { pilotPanel.innerHTML = html; pilotPanel.classList.add("show"); }
 function hidePilotPanel() { pilotPanel.classList.remove("show"); }
@@ -1593,13 +1611,15 @@ function beginPilot() {
   document.getElementById("loader").classList.add("done"); // ensure the loader is gone
   document.body.classList.add("pilot");
   piloting = true; pilotProgress = 0; shield = 100; stardust = 0; shipX = 0; shipY = 0; pilotShake = 0;
+  combo = 1; boostMouse = false; boostKey = false;
   hazardGroup.visible = true;
   for (const h of hazards) resetHazard(h);
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  ensureCtx(); if (audioCtx.state === "suspended") audioCtx.resume(); // enable SFX
 }
 function endPilot(win) {
   piloting = false;
   hazardGroup.visible = false;
+  if (stardust > highScore) { highScore = stardust; try { localStorage.setItem("aether_best", String(highScore)); } catch (e) {} }
   const title = win ? "Arrival" : "Hull Breach";
   const msg = win
     ? "You rode the shockwave of a newborn star and lived to remember it."
@@ -1608,6 +1628,7 @@ function endPilot(win) {
     <h2>${title}</h2>
     <p>${msg}</p>
     <p class="big">✦ ${stardust} stardust collected</p>
+    <p>Best flight · ✦ ${highScore}</p>
     <button id="pilotAgain">↻ Fly again</button>
     <button id="pilotDone">✕ Back to the story</button>`);
   document.getElementById("pilotAgain").addEventListener("click", () => { hidePilotPanel(); beginPilot(); }, { once: true });
@@ -1622,6 +1643,22 @@ function exitPilot() {
 document.getElementById("pilotBtn").addEventListener("click", startPilot);
 document.getElementById("pilotExit").addEventListener("click", () => endPilot(false));
 
+// keyboard steering (WASD / arrows), boost (space/shift), Esc to abort
+window.addEventListener("keydown", (e) => {
+  if (!piloting) return;
+  const k = e.key.toLowerCase();
+  if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) { pilotKeys[k] = true; e.preventDefault(); }
+  if (k === " " || k === "shift") boostKey = true;
+  if (e.key === "Escape") endPilot(false);
+});
+window.addEventListener("keyup", (e) => {
+  const k = e.key.toLowerCase();
+  pilotKeys[k] = false;
+  if (k === " " || k === "shift") boostKey = false;
+});
+window.addEventListener("pointerup", () => { boostMouse = false; });
+
+const pilotComboEl = document.getElementById("pilotCombo");
 const PILOT_ERAS = [[0, "I · DUST"], [0.3, "II · COLLAPSE"], [0.55, "III · IGNITION"], [0.78, "IV · NEW WORLD"]];
 const pilotEraEl = document.getElementById("pilotEra");
 const pilotYearsEl = document.getElementById("pilotYears");
@@ -1629,11 +1666,19 @@ const pilotShieldEl = document.getElementById("pilotShield");
 const pilotStardustEl = document.getElementById("pilotStardust");
 
 function updatePilot(gdt) {
-  pilotProgress = Math.min(1, pilotProgress + gdt * 0.014); // ~70s journey
+  const boosting = boostMouse || boostKey;
+  pilotProgress = Math.min(1, pilotProgress + gdt * (boosting ? 0.024 : 0.014));
   targetProgress = pilotProgress;
-  shipX += (mouseTarget.x * 7.5 - shipX) * 0.12;
-  shipY += (mouseTarget.y * 5.2 - shipY) * 0.12;
-  const speed = 26 + pilotProgress * 46;
+  // steering — mouse pull + keyboard push
+  shipX += (mouseTarget.x * 7.5 - shipX) * 0.10;
+  shipY += (mouseTarget.y * 5.2 - shipY) * 0.10;
+  const kx = (pilotKeys["d"] || pilotKeys["arrowright"] ? 1 : 0) - (pilotKeys["a"] || pilotKeys["arrowleft"] ? 1 : 0);
+  const ky = (pilotKeys["w"] || pilotKeys["arrowup"] ? 1 : 0) - (pilotKeys["s"] || pilotKeys["arrowdown"] ? 1 : 0);
+  shipX += kx * 16 * gdt; shipY += ky * 16 * gdt;
+  shipX = Math.max(-7.8, Math.min(7.8, shipX));
+  shipY = Math.max(-5.4, Math.min(5.4, shipY));
+  if (boosting) energyTarget = 0.85; // warp streaks (afterimage + aberration) while boosting
+  const speed = (26 + pilotProgress * 46) * (boosting ? 1.9 : 1);
   for (const h of hazards) {
     h.prevZ = h.z;
     h.z += speed * gdt;
@@ -1645,8 +1690,8 @@ function updatePilot(gdt) {
       const hitR = h.isOrb ? 1.8 : 1.35;
       if (r < hitR) {
         h.scored = true;
-        if (h.isOrb) { stardust++; pilotFlash("collect"); }
-        else { shield -= 16; pilotShake = 1; pilotFlash("hit"); }
+        if (h.isOrb) { stardust += combo; combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime(); }
+        else { shield -= 16; combo = 1; pilotShake = 1; pilotFlash("hit"); playThud(); }
       }
     }
   }
@@ -1656,6 +1701,7 @@ function updatePilot(gdt) {
   pilotYearsEl.textContent = "≈ " + Math.max(0, Math.round((1 - pilotProgress) * 60)) + " million years ago";
   pilotShieldEl.style.width = Math.max(0, shield) + "%";
   pilotStardustEl.textContent = stardust;
+  pilotComboEl.textContent = combo > 1 ? "×" + combo : "";
   pilotShake *= 0.9;
   if (shield <= 0) endPilot(false);
   else if (pilotProgress >= 1) endPilot(true);

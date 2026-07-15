@@ -411,6 +411,7 @@ body.pilot .planet-label { opacity: 0 !important; pointer-events: none !importan
   position: absolute; right: clamp(1rem,3vw,2.4rem); bottom: clamp(1rem,3vw,2.4rem);
   font-size: 1rem; letter-spacing: 0.14em; color: #ffe9b0; text-shadow: 0 0 16px rgba(255,207,138,0.5);
 }
+.pilot-combo { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--glow); vertical-align: middle; }
 .pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
 .pilot-hint {
   position: absolute; bottom: 10vh; left: 50%; transform: translateX(-50%);
