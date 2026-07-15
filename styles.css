@@ -437,6 +437,36 @@ body.pilot .planet-label { opacity: 0 !important; pointer-events: none !importan
 /* end-screen achievement summary */
 .achv-line { color: rgba(236,240,255,0.7) !important; font-size: 0.8rem !important; letter-spacing: 0.14em; text-transform: uppercase; }
 .achv-new { color: #ffe9b0; }
+/* achievements gallery */
+.ach-panel {
+  position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; padding: 6vw;
+  background: radial-gradient(circle at 50% 45%, rgba(10,8,32,0.72), rgba(3,2,9,0.92) 70%); backdrop-filter: blur(6px);
+}
+.ach-panel.show { display: flex; }
+.ach-card {
+  position: relative; width: min(42rem, 92vw); max-height: 84vh; overflow-y: auto; text-align: center;
+  background: rgba(10,12,28,0.6); border: 1px solid rgba(139,233,255,0.25); border-radius: 1.2rem; padding: 2.4rem 2rem;
+}
+.ach-card h2 {
+  font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 500; font-size: clamp(1.8rem,5vw,3rem);
+  background: linear-gradient(180deg,#fff,var(--glow)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ach-sub { color: var(--glow); font-size: 0.7rem; letter-spacing: 0.28em; text-transform: uppercase; margin: 0.4rem 0 1.6rem; }
+.ach-close {
+  position: absolute; top: 1rem; right: 1rem; pointer-events: auto; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(139,233,255,0.4); color: var(--ink); width: 2.4rem; height: 2.4rem; border-radius: 50%; cursor: pointer; font-size: 0.9rem;
+}
+.ach-close:hover { background: rgba(139,233,255,0.12); }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem,1fr)); gap: 0.8rem; text-align: left; }
+.ach-item { display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem; border-radius: 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid transparent; }
+.ach-item.on { border-color: rgba(255,207,138,0.4); box-shadow: 0 0 22px rgba(255,190,120,0.15); }
+.ach-item.off { opacity: 0.5; }
+.ach-medal { font-size: 1.7rem; filter: grayscale(1) brightness(0.8); }
+.ach-item.on .ach-medal { filter: none; }
+.ach-txt { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.ach-txt b { font-size: 0.82rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+.ach-item.on .ach-txt b { color: #ffe9b0; }
+.ach-txt small { font-size: 0.74rem; color: rgba(236,240,255,0.55); font-family: "Cormorant Garamond", serif; font-style: italic; }
 .pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
 /* difficulty badge in the HUD */
 .pilot-diff {

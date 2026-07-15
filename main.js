@@ -1592,6 +1592,28 @@ function unlock(id) {
   if (!achShowing) nextAch();
   playChime();
 }
+// achievements gallery (openable from the HUD anytime)
+const achPanel = document.getElementById("achPanel");
+function _esc(s) { return String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c])); }
+function openAchPanel() {
+  achPanel.innerHTML = `
+    <div class="ach-card">
+      <button class="ach-close" id="achClose" title="Close">✕</button>
+      <h2>Achievements</h2>
+      <p class="ach-sub">${achv.size} / ${ACHV.length} unlocked</p>
+      <div class="ach-grid">
+        ${ACHV.map((a) => {
+          const on = achv.has(a.id);
+          return `<div class="ach-item ${on ? "on" : "off"}"><div class="ach-medal">${on ? "🏅" : "🔒"}</div><div class="ach-txt"><b>${_esc(a.name)}</b><small>${_esc(a.desc)}</small></div></div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  achPanel.classList.add("show");
+  document.getElementById("achClose").addEventListener("click", closeAchPanel, { once: true });
+}
+function closeAchPanel() { achPanel.classList.remove("show"); }
+document.getElementById("achBtn").addEventListener("click", openAchPanel);
+achPanel.addEventListener("click", (e) => { if (e.target === achPanel) closeAchPanel(); });
 const hazards = [];
 const hazardGroup = new THREE.Group();
 hazardGroup.visible = false;
