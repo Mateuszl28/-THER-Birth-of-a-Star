@@ -1039,7 +1039,41 @@ const ColorGradeShader = {
 };
 const gradePass = new ShaderPass(ColorGradeShader);
 composer.addPass(gradePass);
+
+// Cinematic shallow depth-of-field — blurs everything away from the focus point
+const FocusBlurShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uFocus: { value: new THREE.Vector2(0.5, 0.5) },
+    uStrength: { value: 0.0 },
+    uRes: { value: new THREE.Vector2(1, 1) },
+  },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform vec2 uFocus; uniform float uStrength; uniform vec2 uRes;
+    varying vec2 vUv;
+    void main(){
+      if (uStrength < 0.01){ gl_FragColor = texture2D(tDiffuse, vUv); return; }
+      float d = distance(vUv, uFocus);
+      float blur = smoothstep(0.04, 0.45, d) * uStrength;
+      vec2 px = (blur * 16.0) / uRes;
+      vec3 col = texture2D(tDiffuse, vUv).rgb;
+      float total = 1.0;
+      for (int i = 0; i < 16; i++){
+        float a = float(i) * 2.3999632;          // golden-angle spiral
+        float r = sqrt((float(i) + 0.5) / 16.0);
+        vec2 o = vec2(cos(a), sin(a)) * r * px;
+        col += texture2D(tDiffuse, vUv + o).rgb;
+        total += 1.0;
+      }
+      gl_FragColor = vec4(col / total, 1.0);
+    }
+  `,
+};
+const focusBlurPass = new ShaderPass(FocusBlurShader);
+composer.addPass(focusBlurPass);
 const _sunProj = new THREE.Vector3();
+const _focusScreen = new THREE.Vector3();
 
 // ---------- Adaptive quality: step down if the frame rate drops ----------
 let baseBloom = 0.82;
@@ -1054,6 +1088,7 @@ function applyQuality(level) {
   if (level >= 2) {
     rgbPass.enabled = false;
     godRayPass.enabled = false;
+    focusBlurPass.enabled = false;
     baseBloom = 0.72;
   }
 }
@@ -1766,6 +1801,15 @@ function tick() {
   camera.position.x += Math.sin(t * 63.0) * shake * 0.18;
   camera.position.y += Math.cos(t * 57.0) * shake * 0.18;
   camera.lookAt(_lookTmp);
+
+  // depth-of-field: keep the focused planet sharp, blur the rest
+  const dofAmt = Math.max(finaleT, focusT);
+  focusBlurPass.uniforms.uStrength.value = dofAmt;
+  if (dofAmt > 0.01) {
+    _focusScreen.copy(_lookTmp).project(camera);
+    focusBlurPass.uniforms.uFocus.value.set(_focusScreen.x * 0.5 + 0.5, _focusScreen.y * 0.5 + 0.5);
+    focusBlurPass.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
+  }
 
   // tip the cloud into the galaxy plane early, upright later
   points.rotation.z = (1 - Math.min(progress * 2, 1)) * 0.5;
