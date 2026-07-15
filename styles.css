@@ -424,6 +424,19 @@ body.pilot .planet-label { opacity: 0 !important; pointer-events: none !importan
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .pilot-buff.show { opacity: 1; transform: translate(-50%, 0); }
+/* achievement unlock popup */
+.ach-pop {
+  position: absolute; left: 50%; top: 13vh; transform: translate(-50%, -12px);
+  padding: 0.6rem 1.3rem; border-radius: 999px; white-space: nowrap;
+  font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500;
+  color: #ffe9b0; background: rgba(20,14,6,0.72); border: 1px solid rgba(255,207,138,0.6);
+  box-shadow: 0 0 26px rgba(255,190,120,0.35); backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none; transition: opacity 0.32s ease, transform 0.32s ease;
+}
+.ach-pop.show { opacity: 1; transform: translate(-50%, 0); }
+/* end-screen achievement summary */
+.achv-line { color: rgba(236,240,255,0.7) !important; font-size: 0.8rem !important; letter-spacing: 0.14em; text-transform: uppercase; }
+.achv-new { color: #ffe9b0; }
 .pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
 /* on-screen controls for touch devices */
 .pilot-touch { position: absolute; right: 1rem; bottom: 16vh; display: none; flex-direction: column; align-items: flex-end; gap: 0.9rem; pointer-events: none; }

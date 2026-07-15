@@ -1554,6 +1554,38 @@ let magnetT = 0, slowT = 0, pilotDist = 0; // power-up timers (s) + distance fol
 let nearMiss = 0, lastHitT = 0, pilotClock = 0; // near-miss count, last-hit time, in-game clock
 const pilotKeys = {};
 try { highScore = parseInt(localStorage.getItem("aether_best") || "0", 10) || 0; } catch (e) {}
+// ---- Achievements (client-side, persisted) ----
+const ACHV = [
+  { id: "first_flight", name: "First Contact", desc: "Complete a flight" },
+  { id: "arrival", name: "Time Traveler", desc: "Reach the newborn star" },
+  { id: "combo8", name: "Overdrive Ace", desc: "Reach an ×8 combo" },
+  { id: "shockwave", name: "Wall Rider", desc: "Clear a supernova shockwave" },
+  { id: "dust100", name: "Stardust Baron", desc: "Gather 100 stardust in one run" },
+  { id: "untouched", name: "Untouchable", desc: "Arrive with a full hull" },
+  { id: "daredevil", name: "Daredevil", desc: "10 near misses in one run" },
+];
+let achv = new Set();
+try { achv = new Set(JSON.parse(localStorage.getItem("aether_achv") || "[]")); } catch (e) {}
+let achNew = [];
+const achQueue = [];
+let achShowing = false;
+function nextAch() {
+  const el = document.getElementById("achPop");
+  if (!el || !achQueue.length) { achShowing = false; return; }
+  achShowing = true;
+  el.textContent = "🏅 " + achQueue.shift();
+  el.classList.add("show");
+  setTimeout(() => { el.classList.remove("show"); setTimeout(nextAch, 340); }, 2000);
+}
+function unlock(id) {
+  const def = ACHV.find((a) => a.id === id);
+  if (!def || achv.has(id)) return;
+  achv.add(id); achNew.push(def);
+  try { localStorage.setItem("aether_achv", JSON.stringify([...achv])); } catch (e) {}
+  achQueue.push(def.name);
+  if (!achShowing) nextAch();
+  playChime();
+}
 const hazards = [];
 const hazardGroup = new THREE.Group();
 hazardGroup.visible = false;
@@ -1688,7 +1720,7 @@ function beginPilot() {
   piloting = true; pilotProgress = 0; shield = 100; stardust = 0; shipX = 0; shipY = 0; pilotShake = 0;
   combo = 1; boostMouse = false; boostKey = false;
   magnetT = 0; slowT = 0; pilotDist = 0; dashT = 0; dashCd = 0;
-  nearMiss = 0; lastHitT = 0; pilotClock = 0;
+  nearMiss = 0; lastHitT = 0; pilotClock = 0; achNew = [];
   shockActive = false; shockNext = 0; shockMesh.visible = false; shockMesh.material.opacity = 0;
   hazardGroup.visible = true;
   for (const h of hazards) resetHazard(h);
@@ -1738,6 +1770,8 @@ async function submitScore() {
 function endPilot(win) {
   piloting = false;
   hazardGroup.visible = false;
+  unlock("first_flight");
+  if (win) { unlock("arrival"); if (shield >= 99) unlock("untouched"); }
   if (stardust > highScore) { highScore = stardust; try { localStorage.setItem("aether_best", String(highScore)); } catch (e) {} }
   const title = win ? "Arrival" : "Hull Breach";
   const msg = win
@@ -1751,6 +1785,7 @@ function endPilot(win) {
     <p class="big">✦ ${stardust} stardust collected</p>
     <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years · ${nearMiss} near misses</p>
     <p>Best flight · ✦ ${highScore}</p>
+    <p class="achv-line">🏅 ${achv.size}/${ACHV.length} achievements${achNew.length ? ' <span class="achv-new">+ ' + achNew.map((a) => escHtml(a.name)).join(", ") + "</span>" : ""}</p>
     <div class="pilot-name-row">
       <input id="pilotName" maxlength="16" placeholder="callsign" value="${escHtml(savedName)}" autocomplete="off" spellcheck="false" />
       <button id="pilotSubmit">✦ Submit score</button>
@@ -1853,11 +1888,17 @@ function updatePilot(gdt) {
       const r = Math.hypot(h.x - shipX, h.y - shipY);
       const hitR = h.isOrb ? orbR : 1.35;
       if (h.isOrb) {
-        if (r < hitR) { stardust += combo * (combo >= 6 ? 2 : 1); combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime(); }
+        if (r < hitR) {
+          stardust += combo * (combo >= 6 ? 2 : 1); combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime();
+          if (combo >= 8) unlock("combo8");
+          if (stardust >= 100) unlock("dust100");
+        }
       } else if (r < hitR) {
         if (dashT <= 0) { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; lastHitT = pilotClock; pilotFlash("hit"); playThud(); }
       } else if (r < 2.7) {
         nearMiss++; stardust += 1; showBuff("NEAR MISS +1", 0xffe9b0); // reward a razor-thin dodge
+        if (nearMiss >= 10) unlock("daredevil");
+        if (stardust >= 100) unlock("dust100");
       }
     }
   }
@@ -1882,7 +1923,7 @@ function updatePilot(gdt) {
     shockMesh.material.opacity = Math.min(0.85, (shockZ + 72) / 72 * 0.85);
     if (sPrev <= PILOT_Z0 && shockZ > PILOT_Z0) {
       const d = Math.hypot(shipX - shockGateX, shipY - shockGateY);
-      if (d < 2.6) { stardust += 5; pilotFlash("collect"); playChime(); showBuff("SHOCKWAVE CLEARED +5", 0x7dffa6); }
+      if (d < 2.6) { stardust += 5; pilotFlash("collect"); playChime(); showBuff("SHOCKWAVE CLEARED +5", 0x7dffa6); unlock("shockwave"); }
       else { shield -= 40; combo = 1; pilotShake = 2.4; pilotFlash("hit"); playThud(); showBuff("SHOCKWAVE IMPACT", 0xff5a4a); }
     }
     if (shockZ > PILOT_Z0 + 6) { shockActive = false; shockMesh.visible = false; }
