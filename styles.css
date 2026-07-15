@@ -425,6 +425,18 @@ body.pilot .planet-label { opacity: 0 !important; pointer-events: none !importan
 }
 .pilot-buff.show { opacity: 1; transform: translate(-50%, 0); }
 .pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
+/* on-screen controls for touch devices */
+.pilot-touch { position: absolute; right: 1rem; bottom: 16vh; display: none; flex-direction: column; align-items: flex-end; gap: 0.9rem; pointer-events: none; }
+body.touch.pilot .pilot-touch { display: flex; }
+.pilot-tbtn {
+  pointer-events: auto; box-sizing: border-box; width: 4.6rem; height: 4.6rem; border-radius: 50%;
+  background: rgba(12,16,34,0.5); border: 1px solid rgba(139,233,255,0.5); color: #cfe4ff;
+  font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 0 20px rgba(139,233,255,0.25); user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.pilot-tbtn:active { transform: scale(0.92); }
+.pilot-tbtn--boost { border-color: rgba(255,190,120,0.6); color: #ffdca8; box-shadow: 0 0 22px rgba(255,190,120,0.3); width: 5.6rem; height: 5.6rem; }
 .pilot-hint {
   position: absolute; bottom: 10vh; left: 50%; transform: translateX(-50%);
   font-size: 0.6rem; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(238,241,255,0.45);

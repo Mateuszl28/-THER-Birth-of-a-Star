@@ -1145,6 +1145,7 @@ window.addEventListener("pointermove", (e) => {
 // Mobile: tilt the phone to parallax the cosmos
 if (IS_MOBILE) {
   window.addEventListener("deviceorientation", (e) => {
+    if (piloting) return; // in-game: touch-drag steers, tilt must not fight it
     if (e.gamma == null || e.beta == null) return;
     mouseTarget.x = Math.max(-1, Math.min(1, e.gamma / 35));
     mouseTarget.y = Math.max(-1, Math.min(1, (e.beta - 45) / 35));
@@ -1708,9 +1709,18 @@ function endPilot(win) {
     <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years</p>
     <p>Best flight · ✦ ${highScore}</p>
     <button id="pilotAgain">↻ Fly again</button>
+    <button id="pilotShare">✦ Share flight</button>
     <button id="pilotDone">✕ Back to the story</button>`);
   document.getElementById("pilotAgain").addEventListener("click", () => { hidePilotPanel(); beginPilot(); }, { once: true });
   document.getElementById("pilotDone").addEventListener("click", exitPilot, { once: true });
+  document.getElementById("pilotShare").addEventListener("click", async () => {
+    const url = location.origin + location.pathname + "?seed=" + encodeURIComponent(seedStr) + "&pilot=1";
+    const text = `I folded ${Math.round(pilotDist).toLocaleString()} light-years and gathered ✦${stardust} stardust flying through the birth of a star in ÆTHER.`;
+    try {
+      if (navigator.share) await navigator.share({ title: "ÆTHER — Birth of a Star", text, url });
+      else { await navigator.clipboard.writeText(text + " " + url); showToast("Flight copied — share your run"); }
+    } catch (e) {}
+  });
 }
 function exitPilot() {
   piloting = false;
@@ -1720,6 +1730,20 @@ function exitPilot() {
 }
 document.getElementById("pilotBtn").addEventListener("click", startPilot);
 document.getElementById("pilotExit").addEventListener("click", () => endPilot(false));
+
+// on-screen controls for touch devices (drag anywhere steers)
+if (IS_MOBILE || matchMedia("(pointer: coarse)").matches) document.body.classList.add("touch");
+const dashBtn = document.getElementById("pilotDashBtn");
+const boostBtn = document.getElementById("pilotBoostBtn");
+if (dashBtn) dashBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); triggerDash(); });
+if (boostBtn) {
+  const on = (e) => { e.preventDefault(); e.stopPropagation(); boostMouse = true; };
+  const off = () => { boostMouse = false; };
+  boostBtn.addEventListener("pointerdown", on);
+  boostBtn.addEventListener("pointerup", off);
+  boostBtn.addEventListener("pointerleave", off);
+  boostBtn.addEventListener("pointercancel", off);
+}
 
 // keyboard steering (WASD / arrows), boost (space/shift), Esc to abort
 window.addEventListener("keydown", (e) => {
