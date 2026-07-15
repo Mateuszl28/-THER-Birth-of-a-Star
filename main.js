@@ -14,6 +14,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { AfterimagePass } from "three/addons/postprocessing/AfterimagePass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 // ---------- Config ----------
@@ -923,6 +924,9 @@ function updateConstellations() {
 // ---------- Post-processing ----------
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+// motion-blur trails during the supernova / fast scroll (damp driven in the loop)
+const afterimagePass = new AfterimagePass(0.0);
+composer.addPass(afterimagePass);
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   0.95, 0.65, 0.0 // strength, radius, threshold
@@ -1745,6 +1749,9 @@ function tick() {
 
   // bloom breathes with the sound (bass punches hardest) and flares on ignition / clicks / fast scroll
   bloom.strength = baseBloom + audioLevel * 0.4 + bassL * 0.5 + ignite * 0.5 + burst * 0.4 + energy * 0.3;
+
+  // motion-blur trails: light streaks during the supernova and fast scrolling
+  afterimagePass.uniforms["damp"].value = Math.min(0.6, ignite * 0.55 + energy * 0.4 + burst * 0.25);
 
   // god rays radiate from the star's screen position
   _sunProj.set(0, 0, 0).project(camera);
