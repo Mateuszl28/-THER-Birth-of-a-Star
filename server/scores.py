@@ -89,9 +89,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, {"error": "bad values"})
             return
         seed = re.sub(r"[^A-Za-z0-9]", "", str(data.get("seed", "")))[:16]
+        diff = str(data.get("diff", "")).lower()
+        if diff not in ("cadet", "pilot", "ace"):
+            diff = ""
         with LOCK:
             rows = load()
-            rows.append({"name": name, "score": score, "dist": dist, "seed": seed})
+            rows.append({"name": name, "score": score, "dist": dist, "seed": seed, "diff": diff})
             rows.sort(key=lambda r: r.get("score", 0), reverse=True)
             rows = rows[:MAX_ROWS]
             save(rows)

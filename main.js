@@ -1552,6 +1552,12 @@ let shipX = 0, shipY = 0, pilotShake = 0;
 let boostMouse = false, boostKey = false, combo = 1, highScore = 0;
 let magnetT = 0, slowT = 0, pilotDist = 0; // power-up timers (s) + distance folded (ly)
 let nearMiss = 0, lastHitT = 0, pilotClock = 0; // near-miss count, last-hit time, in-game clock
+const DIFFS = { // difficulty scales hazard speed and hull damage
+  cadet: { name: "Cadet", spd: 0.82, dmg: 0.7 },
+  pilot: { name: "Pilot", spd: 1.0, dmg: 1.0 },
+  ace: { name: "Ace", spd: 1.28, dmg: 1.4 },
+};
+let diff = "pilot";
 const pilotKeys = {};
 try { highScore = parseInt(localStorage.getItem("aether_best") || "0", 10) || 0; } catch (e) {}
 // ---- Achievements (client-side, persisted) ----
@@ -1709,9 +1715,14 @@ function startPilot() {
   showPilotPanel(`
     <h2>Pilot's Log</h2>
     <p>You are a wanderer from a dead star. Fold time and dive <span class="big">60 million years</span> into the past — to the moment a new sun is born.</p>
-    <p>Steer with your mouse. Gather ✦ stardust to fuel your jump home, and don't let the debris of creation tear your hull apart.</p>
-    <button id="pilotLaunch">▶ Launch</button>`);
-  document.getElementById("pilotLaunch").addEventListener("click", beginPilot, { once: true });
+    <p>Steer with mouse / WASD, dash through debris (E), grab power-ups and fly through the supernova shockwave. Choose your risk:</p>
+    <div class="diff-row">
+      <button class="diff-btn" data-diff="cadet"><b>Cadet</b><small>a gentle drift</small></button>
+      <button class="diff-btn" data-diff="pilot"><b>Pilot</b><small>the journey</small></button>
+      <button class="diff-btn" data-diff="ace"><b>Ace</b><small>veterans only</small></button>
+    </div>`);
+  pilotPanel.querySelectorAll(".diff-btn").forEach((b) =>
+    b.addEventListener("click", () => { diff = b.dataset.diff; beginPilot(); }, { once: true }));
 }
 function beginPilot() {
   hidePilotPanel();
@@ -1726,6 +1737,7 @@ function beginPilot() {
   for (const h of hazards) resetHazard(h);
   for (const p of powerups) { p.active = false; p.scored = false; p.mesh.visible = false; p.cooldown = 6 + Math.random() * 7; }
   if (pilotFxEl) pilotFxEl.textContent = "";
+  const dEl = document.getElementById("pilotDiff"); if (dEl) dEl.textContent = DIFFS[diff].name;
   ensureCtx(); if (audioCtx.state === "suspended") audioCtx.resume(); // enable SFX
 }
 // ---- Online leaderboard (isolated service on :8478) ----
@@ -1737,7 +1749,8 @@ function renderBoard(top, mine) {
   if (!top || !top.length) { el.innerHTML = '<div class="board-empty">be the first pilot to rank</div>'; return; }
   el.innerHTML = '<div class="board-head">✦ Galactic leaderboard</div>' + top.slice(0, 8).map((r, i) => {
     const me = mine && r.name === mine.name && r.score === mine.score;
-    return `<div class="board-row${me ? " me" : ""}"><span class="board-rank">${i + 1}</span><span class="board-name">${escHtml(r.name)}</span><span class="board-score">✦ ${r.score}</span></div>`;
+    const tag = r.diff ? `<span class="board-diff ${escHtml(r.diff)}">${escHtml(r.diff)}</span>` : "";
+    return `<div class="board-row${me ? " me" : ""}"><span class="board-rank">${i + 1}</span><span class="board-name">${escHtml(r.name)}${tag}</span><span class="board-score">✦ ${r.score}</span></div>`;
   }).join("");
 }
 async function fetchBoard() {
@@ -1756,7 +1769,7 @@ async function submitScore() {
   try {
     const r = await fetch(SCORES_API + "/scores", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, score: stardust, dist: Math.round(pilotDist), seed: seedStr }),
+      body: JSON.stringify({ name, score: stardust, dist: Math.round(pilotDist), seed: seedStr, diff }),
     });
     const j = await r.json();
     renderBoard(j.top, { name, score: stardust });
@@ -1783,7 +1796,7 @@ function endPilot(win) {
     <h2>${title}</h2>
     <p>${msg}</p>
     <p class="big">✦ ${stardust} stardust collected</p>
-    <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years · ${nearMiss} near misses</p>
+    <p>${DIFFS[diff].name} · ${Math.round(pilotDist).toLocaleString()} light-years folded · ${nearMiss} near misses</p>
     <p>Best flight · ✦ ${highScore}</p>
     <p class="achv-line">🏅 ${achv.size}/${ACHV.length} achievements${achNew.length ? ' <span class="achv-new">+ ' + achNew.map((a) => escHtml(a.name)).join(", ") + "</span>" : ""}</p>
     <div class="pilot-name-row">
@@ -1870,7 +1883,8 @@ function updatePilot(gdt) {
   shipY = Math.max(-5.4, Math.min(5.4, shipY));
   if (boosting) energyTarget = 0.85; // warp streaks (afterimage + aberration) while boosting
   const slowing = slowT > 0;
-  const speed = (26 + pilotProgress * 46) * (boosting ? 1.9 : 1) * (slowing ? 0.55 : 1);
+  const D = DIFFS[diff] || DIFFS.pilot;
+  const speed = (26 + pilotProgress * 46) * (boosting ? 1.9 : 1) * (slowing ? 0.55 : 1) * D.spd;
   pilotDist += speed * gdt * 1.4;
   const orbR = magnetT > 0 ? 2.4 : 1.8;
   for (const h of hazards) {
@@ -1894,7 +1908,7 @@ function updatePilot(gdt) {
           if (stardust >= 100) unlock("dust100");
         }
       } else if (r < hitR) {
-        if (dashT <= 0) { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; lastHitT = pilotClock; pilotFlash("hit"); playThud(); }
+        if (dashT <= 0) { shield -= Math.round((h.fire ? 24 : 16) * D.dmg); combo = 1; pilotShake = h.fire ? 1.4 : 1; lastHitT = pilotClock; pilotFlash("hit"); playThud(); }
       } else if (r < 2.7) {
         nearMiss++; stardust += 1; showBuff("NEAR MISS +1", 0xffe9b0); // reward a razor-thin dodge
         if (nearMiss >= 10) unlock("daredevil");
@@ -1924,7 +1938,7 @@ function updatePilot(gdt) {
     if (sPrev <= PILOT_Z0 && shockZ > PILOT_Z0) {
       const d = Math.hypot(shipX - shockGateX, shipY - shockGateY);
       if (d < 2.6) { stardust += 5; pilotFlash("collect"); playChime(); showBuff("SHOCKWAVE CLEARED +5", 0x7dffa6); unlock("shockwave"); }
-      else { shield -= 40; combo = 1; pilotShake = 2.4; pilotFlash("hit"); playThud(); showBuff("SHOCKWAVE IMPACT", 0xff5a4a); }
+      else { shield -= Math.round(40 * D.dmg); combo = 1; pilotShake = 2.4; pilotFlash("hit"); playThud(); showBuff("SHOCKWAVE IMPACT", 0xff5a4a); }
     }
     if (shockZ > PILOT_Z0 + 6) { shockActive = false; shockMesh.visible = false; }
   }

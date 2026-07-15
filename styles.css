@@ -438,6 +438,26 @@ body.pilot .planet-label { opacity: 0 !important; pointer-events: none !importan
 .achv-line { color: rgba(236,240,255,0.7) !important; font-size: 0.8rem !important; letter-spacing: 0.14em; text-transform: uppercase; }
 .achv-new { color: #ffe9b0; }
 .pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
+/* difficulty badge in the HUD */
+.pilot-diff {
+  position: absolute; left: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem);
+  font-size: 0.6rem; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(238,241,255,0.7);
+  padding: 0.35rem 0.8rem; border: 1px solid rgba(139,233,255,0.35); border-radius: 999px;
+  background: rgba(8,10,24,0.4); backdrop-filter: blur(6px);
+}
+/* difficulty picker on the briefing */
+.diff-row { display: flex; gap: 0.7rem; flex-wrap: wrap; justify-content: center; margin-top: 0.4rem; }
+.diff-btn {
+  pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  min-width: 8rem; padding: 1rem 1.4rem !important; letter-spacing: normal !important; text-transform: none !important;
+}
+.diff-btn b { font-size: 0.95rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--glow); }
+.diff-btn small { font-size: 0.68rem; color: rgba(236,240,255,0.6); letter-spacing: 0.06em; font-family: "Cormorant Garamond", serif; font-style: italic; }
+/* leaderboard difficulty tag */
+.board-diff { font-size: 0.55rem; letter-spacing: 0.14em; padding: 0.08rem 0.4rem; border-radius: 999px; margin-left: 0.5rem; vertical-align: middle; border: 1px solid currentColor; opacity: 0.85; }
+.board-diff.cadet { color: #9fe6b0; }
+.board-diff.pilot { color: #8be9ff; }
+.board-diff.ace { color: #ffb066; }
 /* on-screen controls for touch devices */
 .pilot-touch { position: absolute; right: 1rem; bottom: 16vh; display: none; flex-direction: column; align-items: flex-end; gap: 0.9rem; pointer-events: none; }
 body.touch.pilot .pilot-touch { display: flex; }
