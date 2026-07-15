@@ -446,7 +446,7 @@ body.touch.pilot .pilot-touch { display: flex; }
 .pilot-panel {
   position: fixed; inset: 0; z-index: 9;
   display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-  gap: 1.4rem; padding: 8vw;
+  gap: 1.2rem; padding: 6vw; overflow-y: auto;
   background: radial-gradient(circle at 50% 45%, rgba(10,8,32,0.7), rgba(3,2,9,0.9) 70%);
   backdrop-filter: blur(4px);
 }
@@ -467,6 +467,31 @@ body.touch.pilot .pilot-touch { display: flex; }
 }
 .pilot-panel button:hover { background: rgba(139,233,255,0.12); box-shadow: 0 0 30px rgba(139,233,255,0.3); }
 .pilot-panel button:active { transform: scale(0.96); }
+.pilot-btns { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+/* callsign entry */
+.pilot-name-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+.pilot-name-row input {
+  pointer-events: auto; background: rgba(255,255,255,0.05); border: 1px solid rgba(139,233,255,0.5);
+  color: var(--ink); padding: 0.85rem 1.1rem; border-radius: 999px; font-family: inherit;
+  font-size: 0.75rem; letter-spacing: 0.24em; text-transform: uppercase; text-align: center; width: 12rem; outline: none;
+}
+.pilot-name-row input:focus { border-color: var(--glow); box-shadow: 0 0 22px rgba(139,233,255,0.3); }
+.pilot-name-row button { margin-top: 0; }
+.pilot-name-row button:disabled { opacity: 0.7; cursor: default; }
+/* leaderboard */
+.pilot-board { width: min(30rem, 82vw); min-height: 2rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.board-empty { color: rgba(236,240,255,0.5); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; }
+.board-head { color: var(--glow); font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 0.35rem; }
+.board-row {
+  display: grid; grid-template-columns: 2rem 1fr auto; gap: 0.6rem; align-items: center;
+  padding: 0.4rem 0.9rem; border-radius: 0.6rem; background: rgba(255,255,255,0.03);
+  font-size: 0.82rem; letter-spacing: 0.08em;
+}
+.board-row .board-rank { color: rgba(236,240,255,0.5); text-align: right; font-variant-numeric: tabular-nums; }
+.board-row .board-name { text-align: left; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-row .board-score { color: #ffe9b0; font-variant-numeric: tabular-nums; }
+.board-row.me { background: rgba(139,233,255,0.14); box-shadow: 0 0 18px rgba(139,233,255,0.25); }
+.board-row.me .board-name { color: #fff; }
 
 .damage-flash {
   position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0;

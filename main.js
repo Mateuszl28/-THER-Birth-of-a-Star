@@ -1696,6 +1696,45 @@ function beginPilot() {
   if (pilotFxEl) pilotFxEl.textContent = "";
   ensureCtx(); if (audioCtx.state === "suspended") audioCtx.resume(); // enable SFX
 }
+// ---- Online leaderboard (isolated service on :8478) ----
+const SCORES_API = location.protocol + "//" + location.hostname + ":8478";
+function escHtml(s) { return String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c])); }
+function renderBoard(top, mine) {
+  const el = document.getElementById("pilotBoard");
+  if (!el) return;
+  if (!top || !top.length) { el.innerHTML = '<div class="board-empty">be the first pilot to rank</div>'; return; }
+  el.innerHTML = '<div class="board-head">✦ Galactic leaderboard</div>' + top.slice(0, 8).map((r, i) => {
+    const me = mine && r.name === mine.name && r.score === mine.score;
+    return `<div class="board-row${me ? " me" : ""}"><span class="board-rank">${i + 1}</span><span class="board-name">${escHtml(r.name)}</span><span class="board-score">✦ ${r.score}</span></div>`;
+  }).join("");
+}
+async function fetchBoard() {
+  const el = document.getElementById("pilotBoard");
+  try {
+    const r = await fetch(SCORES_API + "/scores", { cache: "no-store" });
+    renderBoard((await r.json()).top, null);
+  } catch (e) { if (el) el.innerHTML = '<div class="board-empty">leaderboard offline</div>'; }
+}
+async function submitScore() {
+  const nameEl = document.getElementById("pilotName");
+  const btn = document.getElementById("pilotSubmit");
+  const name = ((nameEl && nameEl.value) || "PILOT").slice(0, 16) || "PILOT";
+  try { localStorage.setItem("aether_name", name); } catch (e) {}
+  if (btn) { btn.disabled = true; btn.textContent = "sending…"; }
+  try {
+    const r = await fetch(SCORES_API + "/scores", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, score: stardust, dist: Math.round(pilotDist), seed: seedStr }),
+    });
+    const j = await r.json();
+    renderBoard(j.top, { name, score: stardust });
+    if (btn) btn.textContent = j.rank ? "✓ Ranked #" + j.rank : "✓ Submitted";
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "✦ Submit score"; }
+    showToast("Leaderboard offline");
+  }
+}
+
 function endPilot(win) {
   piloting = false;
   hazardGroup.visible = false;
@@ -1704,17 +1743,29 @@ function endPilot(win) {
   const msg = win
     ? "You rode the shockwave of a newborn star and lived to remember it."
     : "The debris of creation tore your ship apart. The cosmos keeps its secrets.";
+  let savedName = "";
+  try { savedName = localStorage.getItem("aether_name") || ""; } catch (e) {}
   showPilotPanel(`
     <h2>${title}</h2>
     <p>${msg}</p>
     <p class="big">✦ ${stardust} stardust collected</p>
     <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years · ${nearMiss} near misses</p>
     <p>Best flight · ✦ ${highScore}</p>
-    <button id="pilotAgain">↻ Fly again</button>
-    <button id="pilotShare">✦ Share flight</button>
-    <button id="pilotDone">✕ Back to the story</button>`);
+    <div class="pilot-name-row">
+      <input id="pilotName" maxlength="16" placeholder="callsign" value="${escHtml(savedName)}" autocomplete="off" spellcheck="false" />
+      <button id="pilotSubmit">✦ Submit score</button>
+    </div>
+    <div id="pilotBoard" class="pilot-board">loading leaderboard…</div>
+    <div class="pilot-btns">
+      <button id="pilotAgain">↻ Fly again</button>
+      <button id="pilotShare">✦ Share flight</button>
+      <button id="pilotDone">✕ Back to the story</button>
+    </div>`);
   document.getElementById("pilotAgain").addEventListener("click", () => { hidePilotPanel(); beginPilot(); }, { once: true });
   document.getElementById("pilotDone").addEventListener("click", exitPilot, { once: true });
+  document.getElementById("pilotSubmit").addEventListener("click", submitScore);
+  document.getElementById("pilotName").addEventListener("keydown", (e) => { if (e.key === "Enter") submitScore(); });
+  fetchBoard();
   document.getElementById("pilotShare").addEventListener("click", async () => {
     const url = location.origin + location.pathname + "?seed=" + encodeURIComponent(seedStr) + "&pilot=1";
     const text = `I folded ${Math.round(pilotDist).toLocaleString()} light-years and gathered ✦${stardust} stardust flying through the birth of a star in ÆTHER.`;

@@ -6,7 +6,7 @@
 
 ![A newborn ringed world in the finale fly-through](shot_finale.png)
 
-**🎮 Also playable as a game** — press **🛸 PILOT** (or add `?pilot=1`): you're an alien pilot diving 60 million years into the past, flying through all four eras, collecting stardust and dodging asteroids.
+**🎮 Also playable as a game** — press **🛸 PILOT** (or add `?pilot=1`): you're an alien pilot diving 60 million years into the past, flying through all four eras, collecting stardust and dodging asteroids. Boost, dash (i-frames), grab power-ups (repair / magnet / time-dilation), chain combos into **Overdrive**, survive era-specific hazards and a **supernova shockwave** — then post your run to the **online leaderboard**. Playable with mouse + keyboard **or** touch controls on phones.
 
 ![Pilot mode — fly through the birth of a star](shot_pilot.png)
 
