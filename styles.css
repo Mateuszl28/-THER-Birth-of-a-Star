@@ -358,6 +358,32 @@ body {
 }
 body.photo #aura { opacity: 0 !important; }
 
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  z-index: 8;
+  left: 50%;
+  bottom: 14vh;
+  transform: translate(-50%, 12px);
+  padding: 0.7rem 1.3rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: rgba(8, 10, 24, 0.7);
+  border: 1px solid rgba(139, 233, 255, 0.5);
+  box-shadow: 0 0 30px rgba(139, 233, 255, 0.25);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* seed id uses a monospace-ish tracking */
+#seedText { text-transform: none; letter-spacing: 0.12em; }
+
 /* ---------- Act navigation dots ---------- */
 .act-nav {
   position: fixed;

@@ -27,6 +27,28 @@ const shotProgress = shotMode ? Math.max(0, Math.min(1, parseFloat(_SHOT) || 0))
 const _keepUI = new URLSearchParams(location.search).get("ui");
 if (shotMode && !_keepUI) document.body.classList.add("photo");
 
+// ---------- Shareable procedural seed: same seed → same universe ----------
+function _mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function _hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+const _origRandom = Math.random;
+let seedStr = new URLSearchParams(location.search).get("seed");
+let seedNum;
+if (seedStr) seedNum = _hashStr(seedStr);
+else { seedNum = (Math.floor(_origRandom() * 4294967295)) >>> 0; seedStr = seedNum.toString(36); }
+Math.random = _mulberry32(seedNum); // every generator below is now deterministic
+if (!shotMode) {
+  const q = new URLSearchParams(location.search);
+  q.set("seed", seedStr);
+  history.replaceState(null, "", location.pathname + "?" + q.toString());
+}
+
 // Per-act color themes (A = base, B = accent). Cross-faded by scroll.
 const THEME_A = ["#59d5ff", "#ffd27f", "#ff7a3c", "#5affd0"].map((c) => new THREE.Color(c));
 const THEME_B = ["#a56bff", "#ff6fc7", "#ff3d9a", "#6f8bff"].map((c) => new THREE.Color(c));
@@ -1322,6 +1344,25 @@ document.getElementById("replayBtn").addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
+// ---------- Seed controls: new universe / copy shareable link ----------
+const toastEl = document.getElementById("toast");
+let _toastTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+document.getElementById("seedText").textContent = seedStr;
+document.getElementById("seedNew").addEventListener("click", () => {
+  const s = (Math.floor(Math.random() * 4294967295) >>> 0).toString(36);
+  location.href = location.pathname + "?seed=" + s;
+});
+document.getElementById("seedCopy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(location.href); showToast("Link copied — share your universe"); }
+  catch { showToast(seedStr); }
+});
+
 // ---------- Auto-tour (great for recording the demo video) ----------
 const tourBtn = document.getElementById("tourBtn");
 const tourLabel = tourBtn.querySelector(".audio-btn__label");
@@ -1750,5 +1791,6 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
+Math.random = _origRandom; // restore true randomness for runtime (comets, meteors, melody)
 computeScroll();
 tick();
