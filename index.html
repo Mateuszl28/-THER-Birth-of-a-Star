@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>ÆTHER — Birth of a Star</title>
+  <meta name="description" content="An interactive 3D journey through the birth of a star. Scroll to travel from a spiral galaxy to a supernova and a newborn planetary system." />
+  <meta name="theme-color" content="#030209" />
+  <meta name="author" content="ÆTHER — 3D Websites Hackathon" />
+  <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+  <!-- Open Graph / social share -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ÆTHER — Birth of a Star" />
+  <meta property="og:description" content="An interactive 3D journey: spiral galaxy → collapsing core → supernova → a newborn planetary system. Built with Three.js." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- WebGL canvas lives here, fixed behind everything -->
+  <canvas id="scene"></canvas>
+
+  <!-- Soft light that follows the cursor -->
+  <div id="aura" aria-hidden="true"></div>
+
+  <!-- Film grain + vignette for a cinematic finish -->
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- Loading screen -->
+  <div id="loader" class="loader">
+    <img src="./logo.svg" class="loader__logo" alt="" width="120" height="120" />
+    <div class="loader__mark">ÆTHER</div>
+    <div class="loader__bar"><span id="loaderFill"></span></div>
+    <div class="loader__hint">summoning stardust…</div>
+  </div>
+
+  <!-- Narrative overlay: each block fades in around its scroll position -->
+  <main class="story" aria-label="ÆTHER — a journey through the birth of a star">
+    <section class="chapter" data-center="0.00">
+      <p class="kicker">an interstellar journey</p>
+      <h1 class="title">ÆTHER</h1>
+      <p class="lede">Scroll to witness a star being born.</p>
+    </section>
+
+    <section class="chapter" data-center="0.17">
+      <h2>I. A whisper of dust</h2>
+      <p>Every star begins as scattered light, drifting through the dark.</p>
+    </section>
+
+    <section class="chapter" data-center="0.36">
+      <h2>II. Gravity gathers</h2>
+      <p>Slowly, the cosmos pulls the wandering grains into a single glowing heart.</p>
+    </section>
+
+    <section class="chapter" data-center="0.62">
+      <h2>III. Ignition</h2>
+      <p>Pressure becomes fire. In one silent breath, a sun is born.</p>
+    </section>
+
+    <section class="chapter" data-center="0.84">
+      <h2>IV. A new world</h2>
+      <p>From the ashes, dust settles into rings — and planets begin to turn.</p>
+    </section>
+
+    <section class="chapter chapter--end" data-center="1.00">
+      <h2>You just watched a birth.</h2>
+      <p class="credits">ÆTHER — built for the 3D Websites Hackathon.<br />Three.js · WebGL · GLSL · Web Audio</p>
+      <button id="replayBtn" class="replay">▲ &nbsp;experience again</button>
+      <p class="hint-tap">tip: click anywhere to ripple the cosmos</p>
+    </section>
+  </main>
+
+  <!-- Act navigation dots -->
+  <nav id="actNav" class="act-nav" aria-label="Chapters"></nav>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud__cluster">
+      <button id="audioBtn" class="audio-btn" aria-pressed="false" title="Toggle ambient sound">
+        <span class="audio-btn__icon"></span>
+        <span class="audio-btn__label">sound</span>
+      </button>
+      <button id="tourBtn" class="audio-btn" aria-pressed="false" title="Auto-play the journey">
+        <span class="audio-btn__label">▶ tour</span>
+      </button>
+    </div>
+    <div class="hud__act"><span id="actLabel">I · dust</span></div>
+    <div class="progress" aria-hidden="true"><span id="progressFill"></span></div>
+  </div>
+
+  <!-- Floating planet name on hover -->
+  <div id="planetLabel" class="planet-label" aria-hidden="true"></div>
+
+  <!-- Planet info card (appears when you click a planet in Act IV) -->
+  <div id="planetCard" class="planet-card" aria-live="polite">
+    <div class="planet-card__type" id="pcType"></div>
+    <h3 class="planet-card__name" id="pcName"></h3>
+    <p class="planet-card__fact" id="pcFact"></p>
+    <div class="planet-card__hint">click the planet again for more</div>
+  </div>
+
+  <!-- Scroll hint, hidden after first scroll -->
+  <div id="scrollHint" class="scroll-hint" aria-hidden="true">
+    <span>scroll</span>
+    <div class="scroll-hint__line"></div>
+  </div>
+
+  <!-- Tall spacer that drives the scroll progress -->
+  <div class="scroll-driver" aria-hidden="true"></div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

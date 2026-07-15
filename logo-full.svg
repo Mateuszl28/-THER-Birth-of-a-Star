@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 200" fill="none" role="img" aria-label="ÆTHER — Birth of a Star">
+  <defs>
+    <radialGradient id="aeCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="34%" stop-color="#c6f2ff"/>
+      <stop offset="70%" stop-color="#8be9ff"/>
+      <stop offset="100%" stop-color="#8be9ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="aeRing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8be9ff"/>
+      <stop offset="100%" stop-color="#ff8bd0"/>
+    </linearGradient>
+    <linearGradient id="aeText" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="60%" stop-color="#8be9ff"/>
+      <stop offset="120%" stop-color="#ff8bd0"/>
+    </linearGradient>
+    <filter id="aeGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- emblem -->
+  <g filter="url(#aeGlow)" transform="translate(100 100) scale(0.82) translate(-100 -100)">
+    <ellipse cx="100" cy="100" rx="84" ry="31" stroke="url(#aeRing)" stroke-width="2.2" transform="rotate(-22 100 100)" opacity="0.95"/>
+    <ellipse cx="100" cy="100" rx="84" ry="31" stroke="url(#aeRing)" stroke-width="1.6" transform="rotate(36 100 100)" opacity="0.5"/>
+    <circle cx="100" cy="100" r="42" fill="url(#aeCore)"/>
+    <circle cx="100" cy="100" r="11" fill="#ffffff"/>
+    <circle cx="184" cy="100" r="6.5" fill="#ff8bd0" transform="rotate(-22 100 100)"/>
+    <circle cx="150" cy="100" r="3.4" fill="#8be9ff" transform="rotate(36 100 100)"/>
+    <path d="M100 40 L102.4 55 L100 70 L97.6 55 Z" fill="url(#aeRing)" opacity="0.85"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="212" y="118" font-family="'Cormorant Garamond', Georgia, 'Times New Roman', serif"
+        font-size="92" font-weight="500" letter-spacing="10" fill="url(#aeText)">ÆTHER</text>
+  <text x="216" y="150" font-family="'Space Grotesk', 'Segoe UI', Arial, sans-serif"
+        font-size="15" letter-spacing="7" fill="#8ea0c8">BIRTH OF A STAR</text>
+</svg>

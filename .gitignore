@@ -1,0 +1,10 @@
+# capture / render artifacts (regenerated on demand)
+shot_test.png
+shot_core.png
+shot_mid.png
+shot_planets.png
+
+# os junk
+Thumbs.db
+.DS_Store
+desktop.ini
