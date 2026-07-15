@@ -412,6 +412,18 @@ body.pilot .planet-label { opacity: 0 !important; pointer-events: none !importan
   font-size: 1rem; letter-spacing: 0.14em; color: #ffe9b0; text-shadow: 0 0 16px rgba(255,207,138,0.5);
 }
 .pilot-combo { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--glow); vertical-align: middle; }
+.pilot-fx {
+  position: absolute; right: clamp(1rem,3vw,2.4rem); bottom: calc(clamp(1rem,3vw,2.4rem) + 1.9rem);
+  font-size: 0.72rem; letter-spacing: 0.12em; color: #cfe4ff; text-shadow: 0 0 12px rgba(139,233,255,0.6);
+  white-space: nowrap;
+}
+.pilot-buff {
+  position: absolute; left: 50%; top: 34%; transform: translate(-50%, 10px);
+  font-size: clamp(1.1rem, 3.2vw, 2rem); letter-spacing: 0.2em; text-transform: uppercase; font-weight: 500;
+  opacity: 0; pointer-events: none; text-shadow: 0 0 24px currentColor;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.pilot-buff.show { opacity: 1; transform: translate(-50%, 0); }
 .pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
 .pilot-hint {
   position: absolute; bottom: 10vh; left: 50%; transform: translateX(-50%);

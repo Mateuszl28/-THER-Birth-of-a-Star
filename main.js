@@ -1549,6 +1549,7 @@ const PILOT_Z0 = 12;
 let piloting = false, pilotProgress = 0, shield = 100, stardust = 0;
 let shipX = 0, shipY = 0, pilotShake = 0;
 let boostMouse = false, boostKey = false, combo = 1, highScore = 0;
+let magnetT = 0, slowT = 0, pilotDist = 0; // power-up timers (s) + distance folded (ly)
 const pilotKeys = {};
 try { highScore = parseInt(localStorage.getItem("aether_best") || "0", 10) || 0; } catch (e) {}
 const hazards = [];
@@ -1556,6 +1557,8 @@ const hazardGroup = new THREE.Group();
 hazardGroup.visible = false;
 scene.add(hazardGroup);
 const _rockGeo = new THREE.IcosahedronGeometry(0.55, 0);
+// molten debris material for the ignition era (glows under bloom)
+const _fireMat = new THREE.MeshStandardMaterial({ color: 0xff7b3a, roughness: 0.6, emissive: 0xff3a10, emissiveIntensity: 2.4 });
 for (let i = 0; i < 24; i++) {
   const isOrb = i % 3 === 0;
   let mesh;
@@ -1566,7 +1569,22 @@ for (let i = 0; i < 24; i++) {
     mesh = new THREE.Mesh(_rockGeo, new THREE.MeshStandardMaterial({ color: 0x9a9384, roughness: 1.0, emissive: 0x241f17 }));
   }
   hazardGroup.add(mesh);
-  hazards.push({ mesh, isOrb, x: 0, y: 0, z: 0, prevZ: 0, scored: false, rot: new THREE.Vector3(Math.random() * 2, Math.random() * 2, 0), size: 0.7 + Math.random() * 1.3 });
+  hazards.push({ mesh, isOrb, baseMat: mesh.material, x: 0, y: 0, z: 0, prevZ: 0, scored: false, fire: false, drift: 0, rot: new THREE.Vector3(Math.random() * 2, Math.random() * 2, 0), size: 0.7 + Math.random() * 1.3 });
+}
+// power-ups: rare pickups with temporary effects
+const POWERUPS = [
+  { key: "repair", color: 0x7dffa6, label: "HULL +35" },
+  { key: "magnet", color: 0x8be9ff, label: "MAGNET" },
+  { key: "slow",   color: 0xc9a6ff, label: "TIME DILATION" },
+];
+const powerups = [];
+for (let i = 0; i < POWERUPS.length; i++) {
+  const p = POWERUPS[i];
+  const mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebulaTex, color: p.color, transparent: true, opacity: 0.98, blending: THREE.AdditiveBlending, depthWrite: false }));
+  mesh.scale.set(2.1, 2.1, 1);
+  mesh.visible = false;
+  hazardGroup.add(mesh);
+  powerups.push({ mesh, key: p.key, color: p.color, label: p.label, x: 0, y: 0, z: 0, prevZ: 0, active: false, scored: false, cooldown: 6 + i * 4 });
 }
 function resetHazard(h) {
   h.x = (Math.random() * 2 - 1) * 7.5;
@@ -1574,7 +1592,23 @@ function resetHazard(h) {
   h.z = PILOT_Z0 - (36 + Math.random() * 44);
   h.prevZ = h.z;
   h.scored = false;
-  if (!h.isOrb) h.mesh.scale.setScalar(h.size);
+  h.fire = false;
+  h.drift = 0;
+  if (!h.isOrb) {
+    // ignition era: some debris arrives molten and hits harder
+    if (pilotProgress > 0.55 && pilotProgress < 0.82 && Math.random() < 0.6) { h.fire = true; h.mesh.material = _fireMat; }
+    else h.mesh.material = h.baseMat;
+    // collapse era: gravity drags debris toward the center line
+    if (pilotProgress > 0.3 && pilotProgress < 0.55) h.drift = 1;
+    h.mesh.scale.setScalar(h.size);
+  }
+}
+function spawnPowerup(p) {
+  p.active = true; p.scored = false; p.mesh.visible = true;
+  p.x = (Math.random() * 2 - 1) * 6.5;
+  p.y = (Math.random() * 2 - 1) * 4.5;
+  p.z = PILOT_Z0 - (52 + Math.random() * 40);
+  p.prevZ = p.z;
 }
 const damageFlash = document.getElementById("damageFlash");
 function pilotFlash(kind) {
@@ -1594,6 +1628,24 @@ function playThud() {
   src.connect(lp).connect(g).connect(audioCtx.destination);
   src.start(now); src.stop(now + dur);
 }
+const pilotBuffEl = document.getElementById("pilotBuff");
+const pilotFxEl = document.getElementById("pilotFx");
+let _buffTimer = 0;
+function showBuff(text, color) {
+  if (!pilotBuffEl) return;
+  pilotBuffEl.textContent = text;
+  pilotBuffEl.style.color = "#" + color.toString(16).padStart(6, "0");
+  pilotBuffEl.classList.add("show");
+  clearTimeout(_buffTimer);
+  _buffTimer = setTimeout(() => pilotBuffEl.classList.remove("show"), 1400);
+}
+function applyPowerup(key) {
+  pilotFlash("collect"); playChime();
+  if (key === "repair") { shield = Math.min(100, shield + 35); showBuff("HULL +35", 0x7dffa6); }
+  else if (key === "magnet") { magnetT = 6; showBuff("MAGNET ONLINE", 0x8be9ff); }
+  else if (key === "slow") { slowT = 5; showBuff("TIME DILATION", 0xc9a6ff); }
+}
+
 const pilotPanel = document.getElementById("pilotPanel");
 function showPilotPanel(html) { pilotPanel.innerHTML = html; pilotPanel.classList.add("show"); }
 function hidePilotPanel() { pilotPanel.classList.remove("show"); }
@@ -1612,8 +1664,11 @@ function beginPilot() {
   document.body.classList.add("pilot");
   piloting = true; pilotProgress = 0; shield = 100; stardust = 0; shipX = 0; shipY = 0; pilotShake = 0;
   combo = 1; boostMouse = false; boostKey = false;
+  magnetT = 0; slowT = 0; pilotDist = 0;
   hazardGroup.visible = true;
   for (const h of hazards) resetHazard(h);
+  for (const p of powerups) { p.active = false; p.scored = false; p.mesh.visible = false; p.cooldown = 6 + Math.random() * 7; }
+  if (pilotFxEl) pilotFxEl.textContent = "";
   ensureCtx(); if (audioCtx.state === "suspended") audioCtx.resume(); // enable SFX
 }
 function endPilot(win) {
@@ -1628,6 +1683,7 @@ function endPilot(win) {
     <h2>${title}</h2>
     <p>${msg}</p>
     <p class="big">✦ ${stardust} stardust collected</p>
+    <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years</p>
     <p>Best flight · ✦ ${highScore}</p>
     <button id="pilotAgain">↻ Fly again</button>
     <button id="pilotDone">✕ Back to the story</button>`);
@@ -1678,23 +1734,46 @@ function updatePilot(gdt) {
   shipX = Math.max(-7.8, Math.min(7.8, shipX));
   shipY = Math.max(-5.4, Math.min(5.4, shipY));
   if (boosting) energyTarget = 0.85; // warp streaks (afterimage + aberration) while boosting
-  const speed = (26 + pilotProgress * 46) * (boosting ? 1.9 : 1);
+  const slowing = slowT > 0;
+  const speed = (26 + pilotProgress * 46) * (boosting ? 1.9 : 1) * (slowing ? 0.55 : 1);
+  pilotDist += speed * gdt * 1.4;
+  const orbR = magnetT > 0 ? 2.4 : 1.8;
   for (const h of hazards) {
     h.prevZ = h.z;
     h.z += speed * gdt;
     if (h.z > PILOT_Z0 + 4) resetHazard(h);
+    // collapse era: gravity drags debris toward the center line
+    if (h.drift) { h.x += (0 - h.x) * 0.6 * gdt; h.y += (0 - h.y) * 0.6 * gdt; }
+    // magnet: haul stardust toward the ship
+    if (h.isOrb && magnetT > 0) { h.x += (shipX - h.x) * 2.4 * gdt; h.y += (shipY - h.y) * 2.4 * gdt; }
     h.mesh.position.set(h.x, h.y, h.z);
     if (!h.isOrb) { h.mesh.rotation.x += h.rot.x * gdt; h.mesh.rotation.y += h.rot.y * gdt; }
     if (!h.scored && h.prevZ <= PILOT_Z0 && h.z > PILOT_Z0) {
       const r = Math.hypot(h.x - shipX, h.y - shipY);
-      const hitR = h.isOrb ? 1.8 : 1.35;
+      const hitR = h.isOrb ? orbR : 1.35;
       if (r < hitR) {
         h.scored = true;
         if (h.isOrb) { stardust += combo; combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime(); }
-        else { shield -= 16; combo = 1; pilotShake = 1; pilotFlash("hit"); playThud(); }
+        else { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; pilotFlash("hit"); playThud(); }
       }
     }
   }
+  // power-ups: cooldown → spawn → fly past → collect
+  for (const p of powerups) {
+    if (!p.active) { p.cooldown -= gdt; if (p.cooldown <= 0) spawnPowerup(p); continue; }
+    p.prevZ = p.z;
+    p.z += speed * gdt;
+    p.mesh.position.set(p.x, p.y, p.z);
+    if (p.z > PILOT_Z0 + 4) { p.active = false; p.mesh.visible = false; p.cooldown = 9 + Math.random() * 8; continue; }
+    if (!p.scored && p.prevZ <= PILOT_Z0 && p.z > PILOT_Z0) {
+      if (Math.hypot(p.x - shipX, p.y - shipY) < 2.0) {
+        p.scored = true; p.active = false; p.mesh.visible = false; p.cooldown = 9 + Math.random() * 8;
+        applyPowerup(p.key);
+      }
+    }
+  }
+  if (magnetT > 0) magnetT -= gdt;
+  if (slowT > 0) slowT -= gdt;
   let era = PILOT_ERAS[0][1];
   for (const [th, n] of PILOT_ERAS) if (pilotProgress >= th) era = n;
   pilotEraEl.textContent = era;
@@ -1702,6 +1781,12 @@ function updatePilot(gdt) {
   pilotShieldEl.style.width = Math.max(0, shield) + "%";
   pilotStardustEl.textContent = stardust;
   pilotComboEl.textContent = combo > 1 ? "×" + combo : "";
+  if (pilotFxEl) {
+    let fx = "";
+    if (magnetT > 0) fx += "🧲 " + Math.ceil(magnetT) + "s  ";
+    if (slowT > 0) fx += "⧗ " + Math.ceil(slowT) + "s";
+    pilotFxEl.textContent = fx;
+  }
   pilotShake *= 0.9;
   if (shield <= 0) endPilot(false);
   else if (pilotProgress >= 1) endPilot(true);
