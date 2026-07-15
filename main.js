@@ -1551,6 +1551,7 @@ let piloting = false, pilotProgress = 0, shield = 100, stardust = 0;
 let shipX = 0, shipY = 0, pilotShake = 0;
 let boostMouse = false, boostKey = false, combo = 1, highScore = 0;
 let magnetT = 0, slowT = 0, pilotDist = 0; // power-up timers (s) + distance folded (ly)
+let nearMiss = 0, lastHitT = 0, pilotClock = 0; // near-miss count, last-hit time, in-game clock
 const pilotKeys = {};
 try { highScore = parseInt(localStorage.getItem("aether_best") || "0", 10) || 0; } catch (e) {}
 const hazards = [];
@@ -1687,6 +1688,7 @@ function beginPilot() {
   piloting = true; pilotProgress = 0; shield = 100; stardust = 0; shipX = 0; shipY = 0; pilotShake = 0;
   combo = 1; boostMouse = false; boostKey = false;
   magnetT = 0; slowT = 0; pilotDist = 0; dashT = 0; dashCd = 0;
+  nearMiss = 0; lastHitT = 0; pilotClock = 0;
   shockActive = false; shockNext = 0; shockMesh.visible = false; shockMesh.material.opacity = 0;
   hazardGroup.visible = true;
   for (const h of hazards) resetHazard(h);
@@ -1706,7 +1708,7 @@ function endPilot(win) {
     <h2>${title}</h2>
     <p>${msg}</p>
     <p class="big">✦ ${stardust} stardust collected</p>
-    <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years</p>
+    <p>Distance folded · ${Math.round(pilotDist).toLocaleString()} light-years · ${nearMiss} near misses</p>
     <p>Best flight · ✦ ${highScore}</p>
     <button id="pilotAgain">↻ Fly again</button>
     <button id="pilotShare">✦ Share flight</button>
@@ -1796,15 +1798,21 @@ function updatePilot(gdt) {
     h.mesh.position.set(h.x, h.y, h.z);
     if (!h.isOrb) { h.mesh.rotation.x += h.rot.x * gdt; h.mesh.rotation.y += h.rot.y * gdt; }
     if (!h.scored && h.prevZ <= PILOT_Z0 && h.z > PILOT_Z0) {
+      h.scored = true;
       const r = Math.hypot(h.x - shipX, h.y - shipY);
       const hitR = h.isOrb ? orbR : 1.35;
-      if (r < hitR) {
-        h.scored = true;
-        if (h.isOrb) { stardust += combo; combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime(); }
-        else if (dashT <= 0) { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; pilotFlash("hit"); playThud(); }
+      if (h.isOrb) {
+        if (r < hitR) { stardust += combo * (combo >= 6 ? 2 : 1); combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime(); }
+      } else if (r < hitR) {
+        if (dashT <= 0) { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; lastHitT = pilotClock; pilotFlash("hit"); playThud(); }
+      } else if (r < 2.7) {
+        nearMiss++; stardust += 1; showBuff("NEAR MISS +1", 0xffe9b0); // reward a razor-thin dodge
       }
     }
   }
+  // hull hairline regen after a clean stretch of flying
+  pilotClock += gdt;
+  if (shield < 100 && pilotClock - lastHitT > 4) shield = Math.min(100, shield + 4 * gdt);
   // boss event: supernova shockwave — a wall of fire with one safe gap
   if (!shockActive && shockNext < SHOCK_TRIGGERS.length && pilotProgress >= SHOCK_TRIGGERS[shockNext]) {
     shockActive = true;
@@ -1852,7 +1860,7 @@ function updatePilot(gdt) {
   pilotYearsEl.textContent = "≈ " + Math.max(0, Math.round((1 - pilotProgress) * 60)) + " million years ago";
   pilotShieldEl.style.width = Math.max(0, shield) + "%";
   pilotStardustEl.textContent = stardust;
-  pilotComboEl.textContent = combo > 1 ? "×" + combo : "";
+  pilotComboEl.textContent = combo > 1 ? "×" + combo + (combo >= 6 ? " ⚡ OVERDRIVE" : "") : "";
   if (pilotFxEl) {
     let fx = "";
     if (magnetT > 0) fx += "🧲 " + Math.ceil(magnetT) + "s  ";
