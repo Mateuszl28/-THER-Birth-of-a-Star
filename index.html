@@ -99,6 +99,9 @@
       <button id="seedCopy" class="audio-btn" title="Copy a shareable link to this exact universe">
         <span class="audio-btn__label" id="seedText">seed</span>
       </button>
+      <button id="pilotBtn" class="audio-btn" title="Fly the journey as a pilot">
+        <span class="audio-btn__label">🛸 pilot</span>
+      </button>
     </div>
     <div class="hud__act"><span id="actLabel">I · dust</span></div>
     <div class="progress" aria-hidden="true"><span id="progressFill"></span></div>
@@ -117,6 +120,22 @@
 
   <!-- Toast (e.g. "link copied") -->
   <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- Pilot game HUD -->
+  <div id="pilotHud" class="pilot-hud" aria-hidden="true">
+    <div class="pilot-cross"></div>
+    <div class="pilot-top"><span id="pilotEra">I · DUST</span><span id="pilotYears">≈ 60 million years ago</span></div>
+    <div class="pilot-shield"><span>HULL</span><div class="pilot-bar"><i id="pilotShield"></i></div></div>
+    <div class="pilot-score">✦ <span id="pilotStardust">0</span></div>
+    <button id="pilotExit" class="audio-btn pilot-exit"><span class="audio-btn__label">✕ exit</span></button>
+    <div class="pilot-hint">move the mouse to steer · fly into ✦ stardust · dodge the asteroids</div>
+  </div>
+
+  <!-- Pilot briefing / result panel -->
+  <div id="pilotPanel" class="pilot-panel" aria-hidden="true"></div>
+
+  <!-- Damage / collect flash -->
+  <div id="damageFlash" class="damage-flash"></div>
 
   <!-- Scroll hint, hidden after first scroll -->
   <div id="scrollHint" class="scroll-hint" aria-hidden="true">

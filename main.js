@@ -1542,6 +1542,125 @@ const clickRing = new THREE.Mesh(
 );
 scene.add(clickRing);
 
+// ---------- PILOT MODE (arcade flight through the eras) ----------
+const PILOT_Z0 = 12;
+let piloting = false, pilotProgress = 0, shield = 100, stardust = 0;
+let shipX = 0, shipY = 0, pilotShake = 0;
+const hazards = [];
+const hazardGroup = new THREE.Group();
+hazardGroup.visible = false;
+scene.add(hazardGroup);
+const _rockGeo = new THREE.IcosahedronGeometry(0.55, 0);
+for (let i = 0; i < 24; i++) {
+  const isOrb = i % 3 === 0;
+  let mesh;
+  if (isOrb) {
+    mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebulaTex, color: 0x8ff0ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+    mesh.scale.set(1.5, 1.5, 1);
+  } else {
+    mesh = new THREE.Mesh(_rockGeo, new THREE.MeshStandardMaterial({ color: 0x9a9384, roughness: 1.0, emissive: 0x241f17 }));
+  }
+  hazardGroup.add(mesh);
+  hazards.push({ mesh, isOrb, x: 0, y: 0, z: 0, prevZ: 0, scored: false, rot: new THREE.Vector3(Math.random() * 2, Math.random() * 2, 0), size: 0.7 + Math.random() * 1.3 });
+}
+function resetHazard(h) {
+  h.x = (Math.random() * 2 - 1) * 7.5;
+  h.y = (Math.random() * 2 - 1) * 5.2;
+  h.z = PILOT_Z0 - (36 + Math.random() * 44);
+  h.prevZ = h.z;
+  h.scored = false;
+  if (!h.isOrb) h.mesh.scale.setScalar(h.size);
+}
+const damageFlash = document.getElementById("damageFlash");
+function pilotFlash(kind) {
+  damageFlash.className = "damage-flash " + kind;
+  setTimeout(() => { damageFlash.className = "damage-flash"; }, 130);
+}
+const pilotPanel = document.getElementById("pilotPanel");
+function showPilotPanel(html) { pilotPanel.innerHTML = html; pilotPanel.classList.add("show"); }
+function hidePilotPanel() { pilotPanel.classList.remove("show"); }
+
+function startPilot() {
+  showPilotPanel(`
+    <h2>Pilot's Log</h2>
+    <p>You are a wanderer from a dead star. Fold time and dive <span class="big">60 million years</span> into the past — to the moment a new sun is born.</p>
+    <p>Steer with your mouse. Gather ✦ stardust to fuel your jump home, and don't let the debris of creation tear your hull apart.</p>
+    <button id="pilotLaunch">▶ Launch</button>`);
+  document.getElementById("pilotLaunch").addEventListener("click", beginPilot, { once: true });
+}
+function beginPilot() {
+  hidePilotPanel();
+  document.getElementById("loader").classList.add("done"); // ensure the loader is gone
+  document.body.classList.add("pilot");
+  piloting = true; pilotProgress = 0; shield = 100; stardust = 0; shipX = 0; shipY = 0; pilotShake = 0;
+  hazardGroup.visible = true;
+  for (const h of hazards) resetHazard(h);
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+}
+function endPilot(win) {
+  piloting = false;
+  hazardGroup.visible = false;
+  const title = win ? "Arrival" : "Hull Breach";
+  const msg = win
+    ? "You rode the shockwave of a newborn star and lived to remember it."
+    : "The debris of creation tore your ship apart. The cosmos keeps its secrets.";
+  showPilotPanel(`
+    <h2>${title}</h2>
+    <p>${msg}</p>
+    <p class="big">✦ ${stardust} stardust collected</p>
+    <button id="pilotAgain">↻ Fly again</button>
+    <button id="pilotDone">✕ Back to the story</button>`);
+  document.getElementById("pilotAgain").addEventListener("click", () => { hidePilotPanel(); beginPilot(); }, { once: true });
+  document.getElementById("pilotDone").addEventListener("click", exitPilot, { once: true });
+}
+function exitPilot() {
+  piloting = false;
+  hazardGroup.visible = false;
+  hidePilotPanel();
+  document.body.classList.remove("pilot");
+}
+document.getElementById("pilotBtn").addEventListener("click", startPilot);
+document.getElementById("pilotExit").addEventListener("click", () => endPilot(false));
+
+const PILOT_ERAS = [[0, "I · DUST"], [0.3, "II · COLLAPSE"], [0.55, "III · IGNITION"], [0.78, "IV · NEW WORLD"]];
+const pilotEraEl = document.getElementById("pilotEra");
+const pilotYearsEl = document.getElementById("pilotYears");
+const pilotShieldEl = document.getElementById("pilotShield");
+const pilotStardustEl = document.getElementById("pilotStardust");
+
+function updatePilot(gdt) {
+  pilotProgress = Math.min(1, pilotProgress + gdt * 0.014); // ~70s journey
+  targetProgress = pilotProgress;
+  shipX += (mouseTarget.x * 7.5 - shipX) * 0.12;
+  shipY += (mouseTarget.y * 5.2 - shipY) * 0.12;
+  const speed = 26 + pilotProgress * 46;
+  for (const h of hazards) {
+    h.prevZ = h.z;
+    h.z += speed * gdt;
+    if (h.z > PILOT_Z0 + 4) resetHazard(h);
+    h.mesh.position.set(h.x, h.y, h.z);
+    if (!h.isOrb) { h.mesh.rotation.x += h.rot.x * gdt; h.mesh.rotation.y += h.rot.y * gdt; }
+    if (!h.scored && h.prevZ <= PILOT_Z0 && h.z > PILOT_Z0) {
+      const r = Math.hypot(h.x - shipX, h.y - shipY);
+      const hitR = h.isOrb ? 1.8 : 1.35;
+      if (r < hitR) {
+        h.scored = true;
+        if (h.isOrb) { stardust++; pilotFlash("collect"); }
+        else { shield -= 16; pilotShake = 1; pilotFlash("hit"); }
+      }
+    }
+  }
+  let era = PILOT_ERAS[0][1];
+  for (const [th, n] of PILOT_ERAS) if (pilotProgress >= th) era = n;
+  pilotEraEl.textContent = era;
+  pilotYearsEl.textContent = "≈ " + Math.max(0, Math.round((1 - pilotProgress) * 60)) + " million years ago";
+  pilotShieldEl.style.width = Math.max(0, shield) + "%";
+  pilotStardustEl.textContent = stardust;
+  pilotShake *= 0.9;
+  if (shield <= 0) endPilot(false);
+  else if (pilotProgress >= 1) endPilot(true);
+}
+
 // ---------- Resize ----------
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1599,6 +1718,8 @@ function tick() {
     if (warm >= 1) finishLoad();
   }
 
+  const gdt = Math.min(dt, 0.05);
+  if (piloting) updatePilot(gdt);
   const prevProg = progress;
   progress += (targetProgress - progress) * 0.06;
   if (shotMode) progress = shotProgress; // snap for clean captures
@@ -1818,6 +1939,13 @@ function tick() {
     focusBlurPass.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
   }
 
+  // pilot mode overrides the camera: fly forward from the ship's position
+  if (piloting) {
+    camera.position.set(shipX + Math.sin(t * 70) * pilotShake * 0.4, shipY + Math.cos(t * 64) * pilotShake * 0.4, PILOT_Z0);
+    camera.lookAt(shipX * 0.5, shipY * 0.5, -30);
+    focusBlurPass.uniforms.uStrength.value = 0;
+  }
+
   // tip the cloud into the galaxy plane early, upright later
   points.rotation.z = (1 - Math.min(progress * 2, 1)) * 0.5;
   // slow spin of the whole system, faster as the disk forms
@@ -1843,5 +1971,6 @@ function tick() {
 }
 
 Math.random = _origRandom; // restore true randomness for runtime (comets, meteors, melody)
+if (new URLSearchParams(location.search).get("pilot")) beginPilot(); // deep-link straight into the game
 computeScroll();
 tick();

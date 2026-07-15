@@ -6,6 +6,10 @@
 
 ![A newborn ringed world in the finale fly-through](shot_finale.png)
 
+**🎮 Also playable as a game** — press **🛸 PILOT** (or add `?pilot=1`): you're an alien pilot diving 60 million years into the past, flying through all four eras, collecting stardust and dodging asteroids.
+
+![Pilot mode — fly through the birth of a star](shot_pilot.png)
+
 An interactive 3D website built for the **3D Websites Hackathon**. Scroll and you travel
 through the life of a star: a spiral galaxy of ~46,000 particles collapses into a glowing
 core, erupts into a supernova, and finally settles into a living planetary system you can

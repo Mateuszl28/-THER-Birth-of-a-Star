@@ -358,6 +358,98 @@ body {
 }
 body.photo #aura { opacity: 0 !important; }
 
+/* ---------- Pilot game HUD ---------- */
+.pilot-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+body.pilot .pilot-hud { opacity: 1; }
+/* hide the story-mode chrome while flying */
+body.pilot .story,
+body.pilot .hud,
+body.pilot .act-nav,
+body.pilot .scroll-hint,
+body.pilot .planet-card,
+body.pilot .planet-label { opacity: 0 !important; pointer-events: none !important; }
+
+.pilot-cross {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 54px; height: 54px;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid rgba(139, 233, 255, 0.6);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(139, 233, 255, 0.4), inset 0 0 12px rgba(139, 233, 255, 0.2);
+}
+.pilot-cross::before, .pilot-cross::after {
+  content: ""; position: absolute; background: rgba(139, 233, 255, 0.7);
+}
+.pilot-cross::before { left: 50%; top: -12px; width: 1px; height: 12px; transform: translateX(-50%); }
+.pilot-cross::after { top: 50%; left: -12px; height: 1px; width: 12px; transform: translateY(-50%); }
+
+.pilot-top {
+  position: absolute; top: 4vh; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  font-size: 0.72rem; letter-spacing: 0.34em; text-transform: uppercase; color: var(--glow);
+  text-shadow: 0 2px 14px rgba(0,0,0,0.8);
+}
+.pilot-top span:last-child { color: rgba(238,241,255,0.7); font-size: 0.62rem; letter-spacing: 0.22em; }
+
+.pilot-shield {
+  position: absolute; left: clamp(1rem,3vw,2.4rem); bottom: clamp(1rem,3vw,2.4rem);
+  display: flex; align-items: center; gap: 0.7rem;
+  font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--dim);
+}
+.pilot-bar { width: min(28vw, 220px); height: 6px; border-radius: 3px; background: rgba(238,241,255,0.12); overflow: hidden; }
+.pilot-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #59d5ff, #ff6fc7); transition: width 0.2s ease; }
+
+.pilot-score {
+  position: absolute; right: clamp(1rem,3vw,2.4rem); bottom: clamp(1rem,3vw,2.4rem);
+  font-size: 1rem; letter-spacing: 0.14em; color: #ffe9b0; text-shadow: 0 0 16px rgba(255,207,138,0.5);
+}
+.pilot-exit { position: absolute; right: clamp(1rem,3vw,2.4rem); top: clamp(1rem,3vw,2.4rem); pointer-events: auto; }
+.pilot-hint {
+  position: absolute; bottom: 10vh; left: 50%; transform: translateX(-50%);
+  font-size: 0.6rem; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(238,241,255,0.45);
+  text-align: center;
+}
+
+.pilot-panel {
+  position: fixed; inset: 0; z-index: 9;
+  display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  gap: 1.4rem; padding: 8vw;
+  background: radial-gradient(circle at 50% 45%, rgba(10,8,32,0.7), rgba(3,2,9,0.9) 70%);
+  backdrop-filter: blur(4px);
+}
+.pilot-panel.show { display: flex; }
+.pilot-panel h2 {
+  font-family: "Cormorant Garamond", serif; font-weight: 500; font-style: italic;
+  font-size: clamp(2rem, 6vw, 4rem);
+  background: linear-gradient(180deg, #fff, var(--glow)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pilot-panel p { max-width: 44ch; color: rgba(236,240,255,0.85); line-height: 1.7; font-size: clamp(0.95rem,1.6vw,1.15rem); }
+.pilot-panel .big { font-size: clamp(1.4rem,4vw,2.2rem); color: #ffe9b0; letter-spacing: 0.1em; }
+.pilot-panel button {
+  pointer-events: auto; margin-top: 0.6rem;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--glow); color: var(--ink);
+  padding: 0.9rem 2rem; border-radius: 999px; font-family: inherit; font-size: 0.75rem;
+  letter-spacing: 0.3em; text-transform: uppercase; cursor: pointer;
+  transition: background 0.3s, box-shadow 0.3s, transform 0.15s;
+}
+.pilot-panel button:hover { background: rgba(139,233,255,0.12); box-shadow: 0 0 30px rgba(139,233,255,0.3); }
+.pilot-panel button:active { transform: scale(0.96); }
+
+.damage-flash {
+  position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0;
+  transition: opacity 0.4s ease; mix-blend-mode: screen;
+}
+.damage-flash.hit { background: radial-gradient(circle at 50% 50%, transparent 30%, rgba(255,40,60,0.55) 100%); opacity: 1; transition: opacity 0.08s; }
+.damage-flash.collect { background: radial-gradient(circle at 50% 50%, rgba(126,240,255,0.25) 0%, transparent 55%); opacity: 1; transition: opacity 0.08s; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
