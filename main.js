@@ -1610,6 +1610,27 @@ function spawnPowerup(p) {
   p.z = PILOT_Z0 - (52 + Math.random() * 40);
   p.prevZ = p.z;
 }
+
+// ---- Boss event: supernova shockwave (a glowing wall with one safe gap) ----
+let shockActive = false, shockZ = 0, shockGateX = 0, shockGateY = 0, shockNext = 0;
+const SHOCK_TRIGGERS = [0.58, 0.88]; // fires once when crossing each progress mark
+const shockMesh = new THREE.Mesh(
+  new THREE.RingGeometry(2.5, 17, 72, 1), // the hole (radius 2.5) is the safe gate
+  new THREE.MeshBasicMaterial({ color: 0xffb066, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false })
+);
+shockMesh.visible = false;
+hazardGroup.add(shockMesh);
+
+// ---- Dash: short lateral burst with i-frames (key E) ----
+let dashT = 0, dashCd = 0;
+function triggerDash() {
+  if (!piloting || dashCd > 0 || dashT > 0) return;
+  dashT = 0.45; dashCd = 2.6;
+  const dir = (pilotKeys["a"] || pilotKeys["arrowleft"]) ? -1 : (pilotKeys["d"] || pilotKeys["arrowright"]) ? 1 : 0;
+  shipX = Math.max(-7.8, Math.min(7.8, shipX + dir * 3.2)); // burst toward steer direction
+  energyTarget = 1.0;
+  showBuff("DASH", 0x8be9ff); playChime();
+}
 const damageFlash = document.getElementById("damageFlash");
 function pilotFlash(kind) {
   damageFlash.className = "damage-flash " + kind;
@@ -1664,7 +1685,8 @@ function beginPilot() {
   document.body.classList.add("pilot");
   piloting = true; pilotProgress = 0; shield = 100; stardust = 0; shipX = 0; shipY = 0; pilotShake = 0;
   combo = 1; boostMouse = false; boostKey = false;
-  magnetT = 0; slowT = 0; pilotDist = 0;
+  magnetT = 0; slowT = 0; pilotDist = 0; dashT = 0; dashCd = 0;
+  shockActive = false; shockNext = 0; shockMesh.visible = false; shockMesh.material.opacity = 0;
   hazardGroup.visible = true;
   for (const h of hazards) resetHazard(h);
   for (const p of powerups) { p.active = false; p.scored = false; p.mesh.visible = false; p.cooldown = 6 + Math.random() * 7; }
@@ -1705,6 +1727,7 @@ window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) { pilotKeys[k] = true; e.preventDefault(); }
   if (k === " " || k === "shift") boostKey = true;
+  if (k === "e") triggerDash();
   if (e.key === "Escape") endPilot(false);
 });
 window.addEventListener("keyup", (e) => {
@@ -1754,9 +1777,32 @@ function updatePilot(gdt) {
       if (r < hitR) {
         h.scored = true;
         if (h.isOrb) { stardust += combo; combo = Math.min(combo + 1, 8); pilotFlash("collect"); playChime(); }
-        else { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; pilotFlash("hit"); playThud(); }
+        else if (dashT <= 0) { shield -= h.fire ? 24 : 16; combo = 1; pilotShake = h.fire ? 1.4 : 1; pilotFlash("hit"); playThud(); }
       }
     }
+  }
+  // boss event: supernova shockwave — a wall of fire with one safe gap
+  if (!shockActive && shockNext < SHOCK_TRIGGERS.length && pilotProgress >= SHOCK_TRIGGERS[shockNext]) {
+    shockActive = true;
+    shockZ = PILOT_Z0 - 72;
+    shockGateX = (Math.random() * 2 - 1) * 4.5;
+    shockGateY = (Math.random() * 2 - 1) * 3.2;
+    shockMesh.visible = true; shockMesh.material.opacity = 0;
+    showBuff("⚠ SHOCKWAVE — FLY THROUGH THE GAP", 0xffb066);
+    shockNext++;
+  }
+  if (shockActive) {
+    const sPrev = shockZ;
+    shockZ += speed * gdt * 0.9; // a touch slower than the field, so the gap is reachable
+    shockMesh.position.set(shockGateX, shockGateY, shockZ);
+    shockMesh.rotation.z += gdt * 0.35;
+    shockMesh.material.opacity = Math.min(0.85, (shockZ + 72) / 72 * 0.85);
+    if (sPrev <= PILOT_Z0 && shockZ > PILOT_Z0) {
+      const d = Math.hypot(shipX - shockGateX, shipY - shockGateY);
+      if (d < 2.6) { stardust += 5; pilotFlash("collect"); playChime(); showBuff("SHOCKWAVE CLEARED +5", 0x7dffa6); }
+      else { shield -= 40; combo = 1; pilotShake = 2.4; pilotFlash("hit"); playThud(); showBuff("SHOCKWAVE IMPACT", 0xff5a4a); }
+    }
+    if (shockZ > PILOT_Z0 + 6) { shockActive = false; shockMesh.visible = false; }
   }
   // power-ups: cooldown → spawn → fly past → collect
   for (const p of powerups) {
@@ -1774,6 +1820,8 @@ function updatePilot(gdt) {
   }
   if (magnetT > 0) magnetT -= gdt;
   if (slowT > 0) slowT -= gdt;
+  if (dashT > 0) dashT -= gdt;
+  if (dashCd > 0) dashCd -= gdt;
   let era = PILOT_ERAS[0][1];
   for (const [th, n] of PILOT_ERAS) if (pilotProgress >= th) era = n;
   pilotEraEl.textContent = era;
@@ -1784,7 +1832,8 @@ function updatePilot(gdt) {
   if (pilotFxEl) {
     let fx = "";
     if (magnetT > 0) fx += "🧲 " + Math.ceil(magnetT) + "s  ";
-    if (slowT > 0) fx += "⧗ " + Math.ceil(slowT) + "s";
+    if (slowT > 0) fx += "⧗ " + Math.ceil(slowT) + "s  ";
+    fx += dashCd > 0 ? "⟫ " + Math.ceil(dashCd) + "s" : "⟫ ready";
     pilotFxEl.textContent = fx;
   }
   pilotShake *= 0.9;
