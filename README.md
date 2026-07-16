@@ -34,6 +34,7 @@ explore — all in one continuous, cinematic shot.
 - **▶ TOUR** button — auto-play the whole journey (~42s); perfect for recording the demo video.
 - **↑ / ↓ / PageUp / PageDown / Space / Home / End** — jump between acts.
 - **H** — photo mode: hide all UI for clean screenshots.
+- **C** (or **📸 photo** button) — export the current 3D frame as a PNG (no overlay), named by seed + scroll position.
 
 ## 🛠 Tech
 Three.js · WebGL · GLSL (custom vertex/fragment shaders) · EffectComposer / UnrealBloomPass · Web Audio API · vanilla JS/CSS.

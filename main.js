@@ -65,7 +65,7 @@ function themeAt(p, out, list) {
 
 // ---------- Renderer ----------
 const canvas = document.getElementById("scene");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE, alpha: true, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE, alpha: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.6 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1099,6 +1099,7 @@ function applyQuality(level) {
 
 // ---------- Interaction state ----------
 let targetProgress = 0, progress = 0;
+let captureReq = false; // set true to export the next rendered frame as PNG
 const mouse = new THREE.Vector2(0, 0);
 const mouseTarget = new THREE.Vector2(0, 0);
 let burst = 0;
@@ -1448,6 +1449,7 @@ window.addEventListener("keydown", (e) => {
     document.body.classList.toggle("photo"); // hide UI for clean screenshots
     return;
   }
+  if (e.key === "c" || e.key === "C") { captureReq = true; return; } // export the frame as PNG
   const nav = ["ArrowDown", "PageDown", " ", "ArrowUp", "PageUp", "Home", "End"];
   if (!nav.includes(e.key)) return;
   if (tour) setTour(false);
@@ -1614,6 +1616,7 @@ function openAchPanel() {
 function closeAchPanel() { achPanel.classList.remove("show"); }
 document.getElementById("achBtn").addEventListener("click", openAchPanel);
 achPanel.addEventListener("click", (e) => { if (e.target === achPanel) closeAchPanel(); });
+document.getElementById("shotBtn").addEventListener("click", () => { captureReq = true; });
 const hazards = [];
 const hazardGroup = new THREE.Group();
 hazardGroup.visible = false;
@@ -2307,6 +2310,16 @@ function tick() {
   }
 
   composer.render();
+  if (captureReq) {
+    captureReq = false;
+    try {
+      const a = document.createElement("a");
+      a.download = "aether-" + seedStr + "-" + Math.round(progress * 100) + ".png";
+      a.href = renderer.domElement.toDataURL("image/png");
+      a.click();
+      showToast("Frame saved · " + a.download);
+    } catch (e) { showToast("Capture failed"); }
+  }
   requestAnimationFrame(tick);
 }
 
