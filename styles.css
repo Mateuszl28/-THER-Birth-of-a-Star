@@ -542,6 +542,13 @@ body.touch.pilot .pilot-touch { display: flex; }
 .pilot-name-row button { margin-top: 0; }
 .pilot-name-row button:disabled { opacity: 0.7; cursor: default; }
 /* leaderboard */
+.board-tabs { display: flex; gap: 0.35rem; justify-content: center; flex-wrap: wrap; }
+.board-tab {
+  pointer-events: auto; margin-top: 0 !important; padding: 0.4rem 0.9rem !important; font-size: 0.6rem !important;
+  letter-spacing: 0.18em !important; background: rgba(255,255,255,0.04); border: 1px solid rgba(139,233,255,0.25);
+  border-radius: 999px; color: rgba(236,240,255,0.6); cursor: pointer;
+}
+.board-tab.active { color: var(--ink); border-color: var(--glow); background: rgba(139,233,255,0.12); box-shadow: 0 0 16px rgba(139,233,255,0.25); }
 .pilot-board { width: min(30rem, 82vw); min-height: 2rem; display: flex; flex-direction: column; gap: 0.25rem; }
 .board-empty { color: rgba(236,240,255,0.5); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; }
 .board-head { color: var(--glow); font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 0.35rem; }

@@ -1778,11 +1778,19 @@ function renderBoard(top, mine) {
     return `<div class="board-row${me ? " me" : ""}"><span class="board-rank">${i + 1}</span><span class="board-name">${escHtml(r.name)}${tag}</span><span class="board-score">✦ ${r.score}</span></div>`;
   }).join("");
 }
-async function fetchBoard() {
+let boardFilter = "all";
+function setActiveTab() {
+  document.querySelectorAll(".board-tab").forEach((t) => t.classList.toggle("active", t.dataset.filter === boardFilter));
+}
+async function fetchBoard(filter, mine) {
+  if (filter) boardFilter = filter;
+  setActiveTab();
   const el = document.getElementById("pilotBoard");
+  if (el) el.innerHTML = '<div class="board-empty">loading…</div>';
   try {
-    const r = await fetch(SCORES_API + "/scores", { cache: "no-store" });
-    renderBoard((await r.json()).top, null);
+    const url = SCORES_API + "/scores" + (boardFilter !== "all" ? "?diff=" + boardFilter : "");
+    const r = await fetch(url, { cache: "no-store" });
+    renderBoard((await r.json()).top, mine || null);
   } catch (e) { if (el) el.innerHTML = '<div class="board-empty">leaderboard offline</div>'; }
 }
 async function submitScore() {
@@ -1797,8 +1805,8 @@ async function submitScore() {
       body: JSON.stringify({ name, score: stardust, dist: Math.round(pilotDist), seed: seedStr, diff }),
     });
     const j = await r.json();
-    renderBoard(j.top, { name, score: stardust });
     if (btn) btn.textContent = j.rank ? "✓ Ranked #" + j.rank : "✓ Submitted";
+    fetchBoard(diff, { name, score: stardust }); // jump to your difficulty and highlight your run
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "✦ Submit score"; }
     showToast("Leaderboard offline");
@@ -1828,6 +1836,12 @@ function endPilot(win) {
       <input id="pilotName" maxlength="16" placeholder="callsign" value="${escHtml(savedName)}" autocomplete="off" spellcheck="false" />
       <button id="pilotSubmit">✦ Submit score</button>
     </div>
+    <div class="board-tabs">
+      <button class="board-tab active" data-filter="all">All</button>
+      <button class="board-tab" data-filter="cadet">Cadet</button>
+      <button class="board-tab" data-filter="pilot">Pilot</button>
+      <button class="board-tab" data-filter="ace">Ace</button>
+    </div>
     <div id="pilotBoard" class="pilot-board">loading leaderboard…</div>
     <div class="pilot-btns">
       <button id="pilotAgain">↻ Fly again</button>
@@ -1838,7 +1852,8 @@ function endPilot(win) {
   document.getElementById("pilotDone").addEventListener("click", exitPilot, { once: true });
   document.getElementById("pilotSubmit").addEventListener("click", submitScore);
   document.getElementById("pilotName").addEventListener("keydown", (e) => { if (e.key === "Enter") submitScore(); });
-  fetchBoard();
+  pilotPanel.querySelectorAll(".board-tab").forEach((t) => t.addEventListener("click", () => fetchBoard(t.dataset.filter, null)));
+  fetchBoard("all", null);
   document.getElementById("pilotShare").addEventListener("click", async () => {
     const url = location.origin + location.pathname + "?seed=" + encodeURIComponent(seedStr) + "&pilot=1";
     const text = `I folded ${Math.round(pilotDist).toLocaleString()} light-years and gathered ✦${stardust} stardust flying through the birth of a star in ÆTHER.`;

@@ -4,10 +4,11 @@
 Stores pilot-mode high scores in a JSON file and serves a top-20 list.
 Runs isolated on its own port; it touches nothing else on the host.
 
-  GET  /scores          -> {"top": [...]}            (top 20)
-  POST /scores {json}    -> {"top": [...], "rank": N} (submit a run)
+  GET  /scores               -> {"top": [...]}            (top 20 overall)
+  GET  /scores?diff=ace      -> {"top": [...]}            (top 20 for one difficulty)
+  POST /scores {json}         -> {"top": [...], "rank": N} (submit a run)
 
-Body for POST: {"name": str, "score": int, "dist": int, "seed": str}
+Body for POST: {"name": str, "score": int, "dist": int, "seed": str, "diff": str}
 Run:  python3 scores.py [port]   (default 8478)
 """
 import json
@@ -15,6 +16,7 @@ import os
 import re
 import sys
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DATA = os.environ.get("AETHER_SCORES_FILE", "/opt/aether-scores/scores.json")
@@ -67,7 +69,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.split("?")[0] == "/scores":
-            self._send(200, {"top": load()[:TOP_N]})
+            query = urllib.parse.urlparse(self.path).query
+            d = (urllib.parse.parse_qs(query).get("diff", [""])[0] or "").lower()
+            rows = load()
+            if d in ("cadet", "pilot", "ace"):
+                rows = [r for r in rows if r.get("diff") == d]
+            self._send(200, {"top": rows[:TOP_N]})
         else:
             self._send(404, {"error": "not found"})
 
